@@ -1,5 +1,4 @@
 use gdnative::prelude::*;
-//use gdnative::api::{Mesh, ArrayMesh};
 
 #[derive(NativeClass)]
 #[inherit(Node)]
@@ -18,7 +17,7 @@ impl ProcGen {
 }
 
 fn init(handle: InitHandle) {
-    handle.add_tool_class::<ProcGen>(); //'add_tool_class' rather than 'add_class'
+    handle.add_tool_class::<ProcGen>();
 }
 
 godot_init!(init);

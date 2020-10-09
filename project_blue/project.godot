@@ -18,6 +18,10 @@ _global_script_class_icons={
 config/name="project_blue"
 run/main_scene="res://scenes/main/Main.tscn"
 
+[gdnative]
+
+singletons=[ "res://resources/proc_gen_rust.gdnlib" ]
+
 [rendering]
 
 environment/default_environment="res://resources/default_env.tres"
