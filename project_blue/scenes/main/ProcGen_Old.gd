@@ -1,6 +1,7 @@
 tool
 extends Node
 
+export var enable_tool : bool = false
 export var path : String = "res://resources/meshes/example_mesh.tres"
 export var save_mesh : bool = false
 export var size : Vector3 = Vector3(20,20,20)
@@ -15,33 +16,34 @@ var st : SurfaceTool
 var noise : OpenSimplexNoise
 
 func run_generate(k):
-	noise = OpenSimplexNoise.new()
-	noise.seed = randi()
-	#noise.octaves = 4
-	#noise.period = 20.0
-	#noise.persistence = 0.8
-	
-	#var scalar_field : Array = get_scalar_field(size, zoom, offset)
-	
-	st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	add_cubes(Vector3.ZERO, Vector3(1,1,1), size)
-	
-	st.generate_normals()
-	st.index()
-	
-	var mesh = st.commit()
-	if material:
-		mesh.surface_set_material(0, material)
-	
-	if path != "" and save_mesh:
-		var dir = Directory.new()
-		dir.remove(path)
-		ResourceSaver.save(path, mesh, 32)
-	
-	if !mesh_instance_path.is_empty():
-		var mesh_instance : MeshInstance = get_node(mesh_instance_path)
-		mesh_instance.mesh = mesh
+	if enable_tool or (!Engine.editor_hint):
+		noise = OpenSimplexNoise.new()
+		noise.seed = randi()
+		#noise.octaves = 4
+		#noise.period = 20.0
+		#noise.persistence = 0.8
+		
+		#var scalar_field : Array = get_scalar_field(size, zoom, offset)
+		
+		st = SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		add_cubes(Vector3.ZERO, Vector3(1,1,1), size)
+		
+		st.generate_normals()
+		st.index()
+		
+		var mesh = st.commit()
+		if material:
+			mesh.surface_set_material(0, material)
+		
+		if path != "" and save_mesh:
+			var dir = Directory.new()
+			dir.remove(path)
+			ResourceSaver.save(path, mesh, 32)
+		
+		if !mesh_instance_path.is_empty():
+			var mesh_instance : MeshInstance = get_node(mesh_instance_path)
+			mesh_instance.mesh = mesh
 
 func add_triangle(a,b,c):
 	st.add_vertex(a)

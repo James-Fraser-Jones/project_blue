@@ -1,11 +1,13 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://scenes/main/ProcGen_Old.gd" type="Script" id=1]
 [ext_resource path="res://resources/materials/red_material.tres" type="Material" id=2]
 [ext_resource path="res://scenes/main/ProcGen.gd" type="Script" id=3]
 [ext_resource path="res://scenes/main/ProcGenRust.gdns" type="Script" id=4]
+[ext_resource path="res://scenes/main/Main.gd" type="Script" id=5]
 
 [node name="Main" type="Spatial"]
+script = ExtResource( 5 )
 
 [node name="ProcGen" type="Node" parent="."]
 script = ExtResource( 3 )
@@ -16,7 +18,12 @@ script = ExtResource( 4 )
 [node name="ProcGen_Old" type="Node" parent="."]
 script = ExtResource( 1 )
 size = Vector3( 100, 100, 100 )
+threshold = 0.132
 material = ExtResource( 2 )
 mesh_instance_path = NodePath("../MeshInstance")
 
 [node name="MeshInstance" type="MeshInstance" parent="."]
+
+[node name="Camera" type="Camera" parent="."]
+transform = Transform( -0.758794, 0.348563, -0.550213, 0, 0.844753, 0.535156, 0.65133, 0.406073, -0.640994, -34.6365, 118.598, -36.4354 )
+far = 1738.9
