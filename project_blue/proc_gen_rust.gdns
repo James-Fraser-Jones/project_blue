@@ -1,8 +1,0 @@
-[gd_resource type="NativeScript" load_steps=2 format=2]
-
-[ext_resource path="res://project_blue_rust.gdnlib" type="GDNativeLibrary" id=1]
-
-[resource]
-resource_name = "HelloWorld"
-class_name = "ProcGen"
-library = ExtResource( 1 )

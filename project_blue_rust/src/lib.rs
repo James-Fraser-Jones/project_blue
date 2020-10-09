@@ -1,4 +1,5 @@
 use gdnative::prelude::*;
+//use gdnative::api::{Mesh, ArrayMesh};
 
 #[derive(NativeClass)]
 #[inherit(Node)]
@@ -9,11 +10,6 @@ impl ProcGen {
     fn new(_owner: &Node) -> Self {
         ProcGen
     }
-
-    // #[export]
-    // fn _ready(&self, _owner: &Node) {
-    //     godot_print!("hello, world.")
-    // }
 
     #[export]
     fn hello(&self, _owner: &Node) {
