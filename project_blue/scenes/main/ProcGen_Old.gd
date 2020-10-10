@@ -18,7 +18,8 @@ var noise : OpenSimplexNoise
 func run_generate(k):
 	if enable_tool or (!Engine.editor_hint):
 		noise = OpenSimplexNoise.new()
-		noise.seed = randi()
+		#noise.seed = randi()
+		noise.seed = 42
 		#noise.octaves = 4
 		#noise.period = 20.0
 		#noise.persistence = 0.8
@@ -27,12 +28,10 @@ func run_generate(k):
 		
 		st = SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		
 		add_cubes(Vector3.ZERO, Vector3(1,1,1), size)
-		
-		st.generate_normals()
-		st.index()
-		
 		var mesh = st.commit()
+		
 		if material:
 			mesh.surface_set_material(0, material)
 		
@@ -51,6 +50,7 @@ func add_triangle(a,b,c):
 	st.add_vertex(c)
 
 func add_square(a,b,c,d):
+	st.add_normal(-(b-a).cross(c-a))
 	add_triangle(a,b,c)
 	add_triangle(b,d,c)
 	

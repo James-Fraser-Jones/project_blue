@@ -1,0 +1,2 @@
+11150.65 --default
+11531.54 --calculating my own normals

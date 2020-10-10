@@ -27,3 +27,6 @@ mesh_instance_path = NodePath("../MeshInstance")
 [node name="Camera" type="Camera" parent="."]
 transform = Transform( -0.758794, 0.348563, -0.550213, 0, 0.844753, 0.535156, 0.65133, 0.406073, -0.640994, -34.6365, 118.598, -36.4354 )
 far = 1738.9
+
+[node name="DirectionalLight" type="DirectionalLight" parent="."]
+transform = Transform( -0.885335, 0.313247, -0.343596, 0, 0.73899, 0.673716, 0.464954, 0.596464, -0.654254, 0, 0, 0 )
