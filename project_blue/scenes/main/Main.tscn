@@ -9,7 +9,7 @@
 [node name="Main" type="Spatial"]
 script = ExtResource( 5 )
 
-[node name="ProcGen" type="Node" parent="."]
+[node name="ProcGen" type="MeshInstance" parent="."]
 script = ExtResource( 3 )
 
 [node name="ProcGenRust" type="Node" parent="ProcGen"]

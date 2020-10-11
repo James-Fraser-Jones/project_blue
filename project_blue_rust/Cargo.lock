@@ -190,6 +190,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "isosurface"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4caf4535490ed52ef057093edbd2e30440c997ae5e65b95691c694e0321dc54"
+
+[[package]]
 name = "itoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -331,6 +337,8 @@ name = "project_blue_rust"
 version = "0.1.0"
 dependencies = [
  "gdnative",
+ "isosurface",
+ "transvoxel-data",
 ]
 
 [[package]]
@@ -439,6 +447,12 @@ dependencies = [
  "quote",
  "unicode-xid",
 ]
+
+[[package]]
+name = "transvoxel-data"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31c8adc977f8b18a6894d2dea6c300b73cdd1f653b3adaf0c32749ed5a633a34"
 
 [[package]]
 name = "unicode-segmentation"

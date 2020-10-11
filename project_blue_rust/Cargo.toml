@@ -11,3 +11,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 gdnative = "0.9.0"
+isosurface = "0.0.4"
+transvoxel-data = "0.2.1"

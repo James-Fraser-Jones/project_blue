@@ -1,7 +1,7 @@
 tool
-extends Node
+extends MeshInstance
 
 export var generate : bool = false setget run_generate
 
 func run_generate(k):
-	$ProcGenRust.hello()
+	mesh = $ProcGenRust.proc_gen()
