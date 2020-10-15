@@ -37,3 +37,4 @@ visible = false
 
 [node name="NoiseBalls" type="Node" parent="."]
 script = ExtResource( 6 )
+res = 1.0
