@@ -12,8 +12,8 @@ pub fn marching_cubes( noise: (impl NoiseFn<[f64;3]> + Seedable)
                      ) -> (Vec<[f64; 3]>, Vec<[f64; 3]>) {
 
     //get info
-    let dim: [usize; 3] = [(size[0]*rez[0]) as usize, (size[1]*rez[1]) as usize, (size[1]*rez[1]) as usize]; //how many cells?
-    let step_size: [f64; 3] = [size[0]/rez[0], size[1]/rez[1], size[1]/rez[1]]; //how wide is each cell?
+    let dim: [usize; 3] = [(size[0]*rez[0]) as usize, (size[1]*rez[1]) as usize, (size[2]*rez[2]) as usize]; //how many cells?
+    let step_size: [f64; 3] = [1.0/rez[0], 1.0/rez[1], 1.0/rez[2]]; //how wide is each cell?
 
     //generate voxels
     let noise = noise.set_seed(seed);
