@@ -75,42 +75,6 @@ func get_color():
 		var child = get_child(i)
 		child.modulate = Color.from_hsv((corners[i]+1)/4, 1, 1)
 
-#func big_mesh(big_corners: Array): #to be called from NoiseBalls
-#	if !mesh_path.is_empty():
-#		var mesh_instance: MeshInstance = get_node(mesh_path) #get mesh_instance
-#		var mesh: ArrayMesh = ArrayMesh.new()
-#		
-#		var vertices: Array = []
-#		var normals: Array = []
-#		var arrays: Array = []
-#		arrays.resize(ArrayMesh.ARRAY_MAX)
-#		
-#		for z in range(0, big_corners.size()-1):
-#			for y in range(0, big_corners[0].size()-1):
-#				for x in range(0, big_corners[0][0].size()-1):
-#					var small_corners: Array = [
-#						big_corners[z][y][x]
-#					, 	big_corners[z][y][x+1]
-#					,	big_corners[z][y+1][x]
-#					,	big_corners[z][y+1][x+1]
-#					,	big_corners[z+1][y][x]
-#					,	big_corners[z+1][y][x+1]
-#					,	big_corners[z+1][y+1][x]
-#					,	big_corners[z+1][y+1][x+1]
-#					]
-#					var case_index = corners_to_index(small_corners)
-#					var cell_data = regularCellData[regularCellClass[case_index]]
-#					var vertex_data = regularVertexData[case_index]
-#					if case_index > 0 and case_index < 255:
-#						var arrays_chunk = get_mesh_data(cell_data, vertex_data)
-#						vertices += arrays_chunk[ArrayMesh.ARRAY_VERTEX]
-#						normals += arrays_chunk[ArrayMesh.ARRAY_NORMAL]
-#		
-#		arrays[ArrayMesh.ARRAY_VERTEX] = vertices
-#		arrays[ArrayMesh.ARRAY_NORMAL] = normals		
-#		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-#		mesh_instance.mesh = mesh
-
 func get_mesh():
 	if !mesh_path.is_empty() and !get_child_count() < 8:
 		var mesh_instance : MeshInstance = get_node(mesh_path) #get mesh_instance
@@ -118,9 +82,9 @@ func get_mesh():
 		#create mesh
 		var mesh: ArrayMesh = ArrayMesh.new()
 		var case_index = corners_to_index(corners)
-		var cell_data = regularCellData[regularCellClass[case_index]]
-		var vertex_data = regularVertexData[case_index]
 		if case_index > 0 and case_index < 255:
+			var cell_data = regularCellData[regularCellClass[case_index]]
+			var vertex_data = regularVertexData[case_index]
 			var arrays = get_mesh_data(cell_data, vertex_data)
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 			mesh_instance.mesh = mesh
