@@ -31,6 +31,9 @@ var zoom_vec: Vector3 = Vector3.ONE * zoom
 var ball_num: Vector3 = Vector3.ZERO
 var corners: Array
 
+func _ready():
+	run_seed(seeed)
+
 #utility functions
 func hire_child():
 	add_child(ball.instance())

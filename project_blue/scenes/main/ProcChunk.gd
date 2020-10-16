@@ -3,9 +3,10 @@ extends Node
 
 export (NodePath) var mesh_path
 export(Array, float, -1, 1) var corners = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] setget run_corners
-export var spawn: bool setget run_spawn
 export var random: bool setget run_random
 export var interpolate: bool = true setget run_interpolate
+export var trans: Vector3 = Vector3.ZERO setget run_trans
+export var spawn: bool setget run_spawn
 export var delete: bool setget run_delete
 
 #global vars
@@ -15,20 +16,9 @@ var ball = preload("res://scenes/ball/Ball.tscn")
 func _ready():
 	rng.randomize()
 
-########## getter setters
-
+#setters
 func run_corners(c):
 	corners = c
-	get_color()
-	get_mesh()
-
-func run_spawn(k):
-	if get_child_count() == 0:
-		for i in range(0, 8):
-			add_child(ball.instance())
-			var child: Sprite3D = get_child(i)
-			var coords = index_to_coords(i)
-			child.transform.origin = Vector3(coords[0], coords[1], coords[2])
 	get_color()
 	get_mesh()
 	
@@ -48,6 +38,20 @@ func run_random(r):
 func run_interpolate(i):
 	interpolate = i
 	get_mesh()
+	
+func run_trans(t):
+	trans = t
+	position_balls()
+	get_mesh()
+
+#command setters
+func run_spawn(k):
+	if get_child_count() == 0:
+		for i in range(0, 8):
+			add_child(ball.instance())
+		position_balls()
+	get_color()
+	get_mesh()
 
 func run_delete(k):
 	while get_child_count() > 0:
@@ -58,7 +62,13 @@ func run_delete(k):
 		var mesh_instance : MeshInstance = get_node(mesh_path)
 		mesh_instance.mesh = null
 
-######### heavy lifting functions
+#heavy lifting functions
+func position_balls():
+	for i in range(0, 8):
+			add_child(ball.instance())
+			var child: Sprite3D = get_child(i)
+			var coords = index_to_coords(i)
+			child.transform.origin = Vector3(coords[0], coords[1], coords[2]) + trans
 
 func get_color():
 	for i in get_child_count():
@@ -126,7 +136,7 @@ func get_mesh_data(cell_data: Array, vertex_data: Array) -> Array:
 		var lower_corner: int = get_hex_digit(vertex_data[i], 2)
 		var higher_corner: int = get_hex_digit(vertex_data[i], 3)
 		var weight: float = interp(0, 1, corners[lower_corner], corners[higher_corner], 0) if interpolate else 0.5
-		var pos: Vector3 = get_child(lower_corner).transform.origin.linear_interpolate(get_child(higher_corner).transform.origin, weight)
+		var pos: Vector3 = (get_child(lower_corner).transform.origin).linear_interpolate(get_child(higher_corner).transform.origin, weight)
 		vertex_positions.append(pos)
 	
 	var num_triangles = get_hex_digit(cell_data[0], 1)
@@ -150,7 +160,7 @@ func get_mesh_data(cell_data: Array, vertex_data: Array) -> Array:
 	arrays[ArrayMesh.ARRAY_NORMAL] = normals
 	return arrays
 
-################# utility functions
+#utility functions
 
 #c and d are end points of original range (i.e. corner values [-1, 1])
 #a and b are end points of new range (i.e. local-space co-ordinates across relevant axis [0, 1])
