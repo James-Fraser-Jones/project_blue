@@ -21,7 +21,7 @@ export var spawn : bool setget run_spawn
 export var delete : bool setget run_delete
 
 #global variables
-var scene = preload("res://scenes/ball/Ball.tscn")
+var ball = preload("res://scenes/ball/Ball.tscn")
 var noise = OpenSimplexNoise.new()
 var res_vec: Vector3 = Vector3.ONE * res
 var zoom_vec: Vector3 = Vector3.ONE * zoom
@@ -29,7 +29,7 @@ var ball_num: Vector3 = Vector3.ZERO
 
 #utility functions
 func hire_child():
-	add_child(scene.instance())
+	add_child(ball.instance())
 
 func fire_child():
 	var child = get_child(0)
@@ -103,7 +103,6 @@ func run_invert(b):
 
 #command setters
 func run_spawn(k):
-	spawn = false
 	ball_num = (size * res_vec + Vector3.ONE).floor()
 	var diff = ball_num.x*ball_num.y*ball_num.z - get_child_count()
 	if diff > 0:
@@ -116,6 +115,5 @@ func run_spawn(k):
 	get_color()
 
 func run_delete(k):
-	delete = false
 	while get_child_count() > 0:
 		fire_child()
