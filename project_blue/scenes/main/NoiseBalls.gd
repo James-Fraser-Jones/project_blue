@@ -1,9 +1,11 @@
 tool
 extends Node
 
+#export(NodePath) var proc_chunk_path
+
 #spawn parameters
 export var size: Vector3 = Vector3.ONE*10
-export(float, 1, 4) var res = 1.5 setget run_res
+export(float, 1, 4) var res = 1 setget run_res
 export var trans: Vector3 = Vector3.ZERO setget run_trans
 
 #noise parameters
@@ -19,6 +21,7 @@ export var invert: bool = false setget run_invert
 #commands
 export var spawn : bool setget run_spawn
 export var delete : bool setget run_delete
+#export var mesh: bool setget run_mesh
 
 #global variables
 var ball = preload("res://scenes/ball/Ball.tscn")
@@ -26,6 +29,7 @@ var noise = OpenSimplexNoise.new()
 var res_vec: Vector3 = Vector3.ONE * res
 var zoom_vec: Vector3 = Vector3.ONE * zoom
 var ball_num: Vector3 = Vector3.ZERO
+var corners: Array
 
 #utility functions
 func hire_child():
@@ -52,19 +56,25 @@ func move_dots():
 func get_color():
 	var ball_num: Vector3 = (size * res_vec + Vector3.ONE).floor()
 	var child_count: int = get_child_count()
+	corners = []
 	for z in range(0, ball_num.z):
+		var corner_square: Array = []
 		for y in range(0, ball_num.y):
+			var corner_row: Array = []
 			for x in range(0, ball_num.x):
 				var index = x + y*ball_num.x + z*ball_num.y*ball_num.x
 				if index < child_count:
 					var cur_child: Sprite3D = get_child(index)
-					var val = noise.get_noise_3dv((Vector3(x,y,z) + origin) / zoom_vec) #-1 - 1
+					var val = clamp(noise.get_noise_3dv((Vector3(x,y,z) + origin) / zoom_vec) + thresh, -1, 1) #-1 - 1
 					cur_child.modulate = Color.from_hsv((val + 1)/4,1,1)
 					if cull:
 						if invert:
-							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) >= thresh else 0
+							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) > 0 else 0
 						else:
-							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) <= thresh else 0
+							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) < 0 else 0
+					corner_row.append(val)
+			corner_square.append(corner_row)
+		corners.append(corner_square)
 
 #setters
 func run_res(r):
@@ -117,3 +127,8 @@ func run_spawn(k):
 func run_delete(k):
 	while get_child_count() > 0:
 		fire_child()
+
+#func run_mesh(m):
+#	if !proc_chunk_path.is_empty():
+#		var proc_chunk: Node = get_node(proc_chunk_path)
+#		proc_chunk.big_mesh(corners)

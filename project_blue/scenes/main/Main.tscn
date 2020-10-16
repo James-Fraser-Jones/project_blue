@@ -37,7 +37,6 @@ transform = Transform( 0.747826, -0.404654, 0.52632, 0, 0.792775, 0.609514, -0.6
 
 [node name="NoiseBalls" type="Node" parent="."]
 script = ExtResource( 6 )
-res = 1.0
 
 [node name="ProcChunk" type="Node" parent="."]
 script = ExtResource( 7 )
