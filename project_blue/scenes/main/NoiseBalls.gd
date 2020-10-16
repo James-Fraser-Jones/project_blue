@@ -59,12 +59,12 @@ func get_color():
 				if index < child_count:
 					var cur_child: Sprite3D = get_child(index)
 					var val = noise.get_noise_3dv((Vector3(x,y,z) + origin) / zoom_vec) #-1 - 1
-					cur_child.modulate = Color.from_hsv((val + 1)/2,1,1)
+					cur_child.modulate = Color.from_hsv((val + 1)/4,1,1)
 					if cull:
 						if invert:
-							cur_child.modulate.a = 1 if (cur_child.modulate.h * 2 - 1) >= thresh else 0
+							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) >= thresh else 0
 						else:
-							cur_child.modulate.a = 1 if (cur_child.modulate.h * 2 - 1) <= thresh else 0
+							cur_child.modulate.a = 1 if (cur_child.modulate.h * 4 - 1) <= thresh else 0
 
 #setters
 func run_res(r):

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=8 format=2]
 
 [ext_resource path="res://scenes/main/ProcGen_Old.gd" type="Script" id=1]
 [ext_resource path="res://resources/materials/red_material.tres" type="Material" id=2]
@@ -7,19 +7,6 @@
 [ext_resource path="res://scenes/main/Main.gd" type="Script" id=5]
 [ext_resource path="res://scenes/main/NoiseBalls.gd" type="Script" id=6]
 [ext_resource path="res://scenes/main/ProcChunk.gd" type="Script" id=7]
-
-[sub_resource type="ArrayMesh" id=1]
-surfaces/0 = {
-"aabb": AABB( 0, 0, 0, 1, 1.00001, 1 ),
-"array_data": PoolByteArray( 0, 0, 0, 0, 0, 0, 128, 63, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 127, 127, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 127, 127, 127, 0 ),
-"array_index_data": PoolByteArray(  ),
-"blend_shape_data": [  ],
-"format": 97283,
-"index_count": 0,
-"primitive": 4,
-"skeleton_aabb": [  ],
-"vertex_count": 3
-}
 
 [node name="Main" type="Spatial"]
 script = ExtResource( 5 )
@@ -55,8 +42,5 @@ res = 1.0
 [node name="ProcChunk" type="Node" parent="."]
 script = ExtResource( 7 )
 mesh_path = NodePath("../MeshInstance2")
-corners = [ -0.391, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
 
 [node name="MeshInstance2" type="MeshInstance" parent="."]
-mesh = SubResource( 1 )
-material/0 = null

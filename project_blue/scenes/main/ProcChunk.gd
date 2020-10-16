@@ -3,32 +3,69 @@ extends Node
 
 export (NodePath) var mesh_path
 export(Array, float, -1, 1) var corners = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] setget run_corners
-export var spawn : bool setget run_spawn
-export var mesh : bool setget run_mesh
-export var delete : bool setget run_delete
+export var spawn: bool setget run_spawn
+export var random: bool setget run_random
+export var interpolate: bool = true setget run_interpolate
+export var delete: bool setget run_delete
 
+var rng = RandomNumberGenerator.new()
 var ball = preload("res://scenes/ball/Ball.tscn")
 
-func get_color():
-	for i in get_child_count():
-		var child = get_child(i)
-		child.modulate = Color.from_hsv(fposmod((corners[i]+1)/2, 1), 1, 1)
+func _ready():
+	rng.randomize()
+
+########## getter setters
 
 func run_corners(c):
 	corners = c
 	get_color()
+	get_mesh()
 
-#command setters
 func run_spawn(k):
 	if get_child_count() == 0:
 		for i in range(0, 8):
 			add_child(ball.instance())
 			var child: Sprite3D = get_child(i)
-			child.transform.origin = Vector3(i%2, (i/2)%2, i/4)
+			var coords = index_to_coords(i)
+			child.transform.origin = Vector3(coords[0], coords[1], coords[2])
 	get_color()
+	get_mesh()
+	
+func run_random(r):
+	var c = [
+		rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	,	rng.randf_range(-1, 1)
+	]
+	run_corners(c)
 
-func run_mesh(b):
+func run_interpolate(i):
+	interpolate = i
+	get_mesh()
+
+func run_delete(k):
+	while get_child_count() > 0:
+		var child = get_child(0)
+		remove_child(child)
+		child.queue_free()
 	if !mesh_path.is_empty():
+		var mesh_instance : MeshInstance = get_node(mesh_path)
+		mesh_instance.mesh = null
+
+######### heavy lifting functions
+
+func get_color():
+	for i in get_child_count():
+		var child = get_child(i)
+		child.modulate = Color.from_hsv((corners[i]+1)/4, 1, 1)
+
+func get_mesh():
+	if !mesh_path.is_empty() and !get_child_count() < 8:
 		var mesh_instance : MeshInstance = get_node(mesh_path) #get mesh_instance
 		var mesh: ArrayMesh = ArrayMesh.new() #create new arraymesh
 		
@@ -37,36 +74,37 @@ func run_mesh(b):
 		var cell_data = regularCellData[regularCellClass[case_index]]
 		var vertex_data = regularVertexData[case_index]
 		if case_index > 0 and case_index < 255:
-			get_mesh_data(cell_data, vertex_data)
-			#mesh_instance.mesh = get_mesh_data(cell_data, vertex_data) 
-		
-		#create mesh
-		var vertices = PoolVector3Array() 
-		vertices.append(Vector3(0, 1, 0))
-		vertices.append(Vector3(1, 0, 0))
-		vertices.append(Vector3(0, 0, 1))
-		var normal = (vertices[0] - vertices[2]).cross(vertices[0] - vertices[1])
-		var normals = PoolVector3Array()
-		normals.append(normal)
-		normals.append(normal)
-		normals.append(normal)
-		var arrays = []
-		arrays.resize(ArrayMesh.ARRAY_MAX)
-		arrays[ArrayMesh.ARRAY_VERTEX] = vertices
-		arrays[ArrayMesh.ARRAY_NORMAL] = normals
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		mesh_instance.mesh = mesh
+			var arrays = get_mesh_data(cell_data, vertex_data)
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			mesh_instance.mesh = mesh
+		else:
+			mesh_instance.mesh = null
 
 func get_mesh_data(cell_data: Array, vertex_data: Array) -> Array:
 	var vertices = PoolVector3Array() 
 	var normals = PoolVector3Array()
 	
-	var lower_corner: int = get_hex_digit(vertex_data[0], 2)
-	var higher_corner: int = get_hex_digit(vertex_data[0], 3)
-	print("data: ", "%x" % [vertex_data[0]], ", lower_corner: ", lower_corner, ", higher_corner: ", higher_corner)
+	var vertex_positions: Array
+	for i in range(0, vertex_data.size()):
+		var lower_ball: Sprite3D = get_child(get_hex_digit(vertex_data[i], 2))
+		var higher_ball: Sprite3D = get_child(get_hex_digit(vertex_data[i], 3))
+		var weight: float = interp(0, 1, lower_ball.modulate.h*4 - 1, higher_ball.modulate.h*4 - 1, 0) if interpolate else 0.5
+		var pos: Vector3 = lower_ball.transform.origin.linear_interpolate(higher_ball.transform.origin, weight)
+		vertex_positions.append(pos)
 	
-	#vertices.append(...)
-	#normals.append(...)
+	var num_triangles = get_hex_digit(cell_data[0], 1)
+	var triangle_indices = cell_data[1]
+	for i in range(0, num_triangles):
+		var v0 = vertex_positions[triangle_indices[3*i]]
+		var v1 = vertex_positions[triangle_indices[3*i + 1]]
+		var v2 = vertex_positions[triangle_indices[3*i + 2]]
+		var normal = get_normal(v0, v1, v2)
+		vertices.append(v0)
+		vertices.append(v2)
+		vertices.append(v1) #clockwise winding order of godot
+		normals.append(normal)
+		normals.append(normal)
+		normals.append(normal)
 	
 	#commit to mesh
 	var arrays = []
@@ -75,14 +113,21 @@ func get_mesh_data(cell_data: Array, vertex_data: Array) -> Array:
 	arrays[ArrayMesh.ARRAY_NORMAL] = normals
 	return arrays
 
-func run_delete(k):
-	while get_child_count() > 0:
-		var child = get_child(0)
-		remove_child(child)
-		child.queue_free()
-	if !mesh_path.is_empty():
-		var mesh_instance : MeshInstance = get_node(mesh_path) #get mesh_instance
-		mesh_instance.mesh = null
+################# utility functions
+
+#c and d are end points of original range (i.e. corner values [-1, 1])
+#a and b are end points of new range (i.e. local-space co-ordinates across relevant axis [0, 1])
+#x is the target value of the original range (i.e. 0)
+#returns target value of the new range (i.e. coordinate across that edge)
+func interp(a: float, b: float, c: float, d: float, x: float) -> float:
+	return a + (b-a)*abs(x-c)/abs(d-c)
+
+func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
+	var normal = (b - a).cross(c - a)
+	return -normal if flip else normal
+
+func index_to_coords(i: int) -> Array:
+	return [i%2, (i/2)%2, i/4]
 
 func get_hex_digit(hex: int, index: int) -> int:
 	return int(("%x" % [hex])[index])
@@ -101,6 +146,7 @@ func corners_to_index(corners: Array) -> int:
 func s(n: float) -> int:
 	return 1 if n < 0 else 0
 
+######################### lookup tables
 const regularCellClass: Array = [
 	0x00, 0x01, 0x01, 0x03, 0x01, 0x03, 0x02, 0x04, 0x01, 0x02, 0x03, 0x04, 0x03, 0x04, 0x04, 0x03,
 	0x01, 0x03, 0x02, 0x04, 0x02, 0x04, 0x06, 0x0C, 0x02, 0x05, 0x05, 0x0B, 0x05, 0x0A, 0x07, 0x04,
