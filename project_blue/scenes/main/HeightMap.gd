@@ -4,7 +4,7 @@ extends Node
 #mesh parameters
 export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
-export(float, 0, 200) var height_scale = 100 setget run_height_scale
+export(float, 0, 200) var height_scale = 50 setget run_height_scale
 
 #base noise parameters
 export var noise_seed: int = 42 setget run_noise_seed
@@ -33,16 +33,17 @@ func _ready():
 
 func get_mesh():
 	var cell_num: Vector2 = (size*res_vec).floor()
-	var step_size: Vector2 = Vector2.ONE/res_vec
-	
-	var centre_point: Vector2 = (cell_num + Vector2.ONE)/2
-	var zoom_correction: Vector2 = ((centre_point * zoom_vec) - centre_point)/zoom_vec
+	var corrected_res: Vector2 = cell_num/size
+	var cell_size: Vector2 = Vector2.ONE/corrected_res
+	var centre_point: Vector2 = origin + size/2
 	
 	var noise_map: Array = []
 	for x in range(0, cell_num.x + 1):
 		var noise_row: Array = []
 		for y in range(0, cell_num.y + 1):
-			noise_row.append(noise.get_noise_2dv(Vector2(x,y)/zoom_vec + zoom_correction + origin))
+			var noise_point = origin + Vector2(x, y)*cell_size
+			var zoomed_noise_point = (noise_point - centre_point)/zoom_vec + centre_point
+			noise_row.append(noise.get_noise_2dv(zoomed_noise_point))
 		noise_map.append(noise_row)
 	
 	var st = SurfaceTool.new()
@@ -53,26 +54,26 @@ func get_mesh():
 			#first triangle
 			val = (noise_map[x][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * step_size.x, val * height_scale, y * step_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, y * step_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, y * cell_size.y))
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * step_size.x, val * height_scale, (y+1) * step_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, (y+1) * cell_size.y))
 			
 			#second triangle
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * step_size.x, val * height_scale, (y+1) * step_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, (y+1) * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, y * step_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, (y+1) * step_size.y))
-	st.generate_normals()
+			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, (y+1) * cell_size.y))
 	st.index()
+	st.generate_normals()
 	var mesh: ArrayMesh = st.commit()
 	var material: SpatialMaterial = SpatialMaterial.new()
 	material.vertex_color_use_as_albedo = true
@@ -220,5 +221,5 @@ func array_mesh_triangle() -> Mesh:
 	return mesh
 	
 func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
-	var normal = (c - a).cross(b - a)
+	var normal = (c - a).cross(b - a).normalized()
 	return -normal if flip else normal
