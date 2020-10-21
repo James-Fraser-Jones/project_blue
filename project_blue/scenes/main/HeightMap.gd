@@ -5,6 +5,7 @@ extends Node
 export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
 export(float, 0, 200) var height_scale = 50 setget run_height_scale
+export var height_curve: CurveTexture setget run_height_curve
 
 #base noise parameters
 export var noise_seed: int = 42 setget run_noise_seed
@@ -30,6 +31,10 @@ func _ready():
 	noise.set_period(period)
 	noise.set_persistence(persistence)
 	noise.set_lacunarity(lacunarity)
+	height_curve = CurveTexture.new()
+	height_curve.curve = Curve.new()
+	height_curve.curve.add_point(Vector2.ZERO)
+	height_curve.curve.add_point(Vector2.ONE)
 
 func get_mesh():
 	var cell_num: Vector2 = (size*res_vec).floor()
@@ -38,13 +43,15 @@ func get_mesh():
 	var centre_point: Vector2 = origin + size/2
 	
 	var noise_map: Array = []
+	noise_map.resize(cell_num.x + 1)
 	for x in range(0, cell_num.x + 1):
 		var noise_row: Array = []
+		noise_row.resize(cell_num.y + 1)
 		for y in range(0, cell_num.y + 1):
 			var noise_point = origin + Vector2(x, y)*cell_size
 			var zoomed_noise_point = (noise_point - centre_point)/zoom_vec + centre_point
-			noise_row.append(noise.get_noise_2dv(zoomed_noise_point))
-		noise_map.append(noise_row)
+			noise_row[y] = noise.get_noise_2dv(zoomed_noise_point)
+		noise_map[x] = noise_row
 	
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -53,25 +60,26 @@ func get_mesh():
 		for y in range(0, cell_num.y):
 			#first triangle
 			val = (noise_map[x][y] + 1)/2
+			
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 			
 			#second triangle
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, val * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, val * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 	st.index()
 	st.generate_normals()
 	var mesh: ArrayMesh = st.commit()
@@ -145,6 +153,11 @@ func run_create_mesh(b):
 	else:
 		$TerrainMesh.mesh = null
 
+func run_height_curve(c):
+	height_curve = c
+	if create_mesh:
+		get_mesh()
+
 #utility functions
 func surface_tool_plane(size: Vector2) -> Mesh:
 	var val_grid: Array = []
@@ -188,16 +201,6 @@ func surface_tool_plane(size: Vector2) -> Mesh:
 	material.vertex_color_use_as_albedo = true
 	mesh.surface_set_material(0, material)
 	return mesh
-
-func surface_tool_triangle() -> Mesh:
-	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.add_vertex(Vector3(1, 0, 1))
-	st.add_vertex(Vector3(0, 0, 1))
-	st.add_vertex(Vector3(1, 0, 0))
-	st.generate_normals()
-	st.index()
-	return st.commit()
 
 func array_mesh_triangle() -> Mesh:
 	var vertices = PoolVector3Array()
