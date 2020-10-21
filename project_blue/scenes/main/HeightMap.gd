@@ -1,54 +1,113 @@
 tool
 extends Node
 
-#spawn parameters
-export var size: Vector2 = Vector2.ONE*255
-export(float, 1, 4) var res = 1 setget run_res
+#mesh parameters
+export var size: Vector2 = Vector2.ONE*255 setget run_size
+export(float, 0.1, 4) var res = 1 setget run_res
+export(float, 0, 200) var height_scale = 100 setget run_height_scale
 
 #noise parameters
-export var seeed: int = 42 setget run_seed
-#export(float, 0.01, 1.5) var zoom = 0.3 setget run_zoom
-#export var origin: Vector2 = Vector2.ZERO setget run_origin
+export var noise_seed: int = 42 setget run_noise_seed
+export(float, 0.01, 3) var zoom = 1 setget run_zoom
+export var origin: Vector2 = Vector2.ZERO setget run_origin
 
-#export(float, -1, 1) var thresh = 0 setget run_thresh
-#export var invert: bool = false setget run_invert
-
-#commands
-#export var spawn : bool setget run_spawn
-#export var delete : bool setget run_delete
+export var create_mesh: bool setget run_create_mesh
 
 #global variables
 var noise = OpenSimplexNoise.new()
 var res_vec: Vector2 = Vector2.ONE * res
-#var zoom_vec: Vector2 = Vector2.ONE * zoom
-
-#create a new mesh
-export var create_mesh : bool setget run_create_mesh
-#position the vertices at the correct x,z points in 3D space
-export var transform_mesh : bool setget run_transform_mesh
-#position the vertices at the correct y points in 3D space, based on noise sampling
-export var bump_mesh : bool setget run_bump_mesh
+var zoom_vec: Vector2 = Vector2.ONE * zoom
 
 func _ready():
-	run_seed(seeed)
+	noise.set_seed(noise_seed)
 
-func run_seed(s):
-	seeed = s
-	noise.set_seed(s)
+func get_mesh():
+	var cell_num: Vector2 = (size*res_vec).floor()
+	var step_size: Vector2 = Vector2.ONE/res_vec
+	
+	var noise_map: Array = []
+	for x in range(0, cell_num.x + 1):
+		var noise_row: Array = []
+		for y in range(0, cell_num.y + 1):
+			noise_row.append(noise.get_noise_2d((x + origin.x)/zoom_vec.x, (y + origin.y)/zoom_vec.y))
+		noise_map.append(noise_row)
+	
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var val
+	for x in range(0, cell_num.x):
+		for y in range(0, cell_num.y):
+			#first triangle
+			val = (noise_map[x][y] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3(x * step_size.x, val * height_scale, y * step_size.y))
+			val = (noise_map[x+1][y] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, y * step_size.y))
+			val = (noise_map[x][y+1] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3(x * step_size.x, val * height_scale, (y+1) * step_size.y))
+			
+			#second triangle
+			val = (noise_map[x][y+1] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3(x * step_size.x, val * height_scale, (y+1) * step_size.y))
+			val = (noise_map[x+1][y] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, y * step_size.y))
+			val = (noise_map[x+1][y+1] + 1)/2
+			st.add_color(Color.from_hsv(val,1,1))
+			st.add_vertex(Vector3((x+1) * step_size.x, val * height_scale, (y+1) * step_size.y))
+	st.generate_normals()
+	st.index()
+	var mesh: ArrayMesh = st.commit()
+	var material: SpatialMaterial = SpatialMaterial.new()
+	material.vertex_color_use_as_albedo = true
+	mesh.surface_set_material(0, material)
+	$TerrainMesh.mesh = mesh
+	
+#getter setters
+func run_size(s):
+	size = s
+	if create_mesh:
+		get_mesh()
 
 func run_res(r):
 	res = r
 	res_vec = Vector2.ONE * res
+	if create_mesh:
+		get_mesh()
+		
+func run_height_scale(h):
+	height_scale = h
+	if create_mesh:
+		get_mesh()
 
-func run_create_mesh(_b):
-	$TerrainMesh.mesh = surface_tool_plane(size)
-
-func run_transform_mesh(_b):
-	pass
+func run_noise_seed(s):
+	noise_seed = s
+	noise.set_seed(noise_seed)
+	if create_mesh:
+		get_mesh()
 	
-func run_bump_mesh(_b):
-	pass
+func run_zoom(z):
+	zoom = z
+	zoom_vec = Vector2.ONE * zoom
+	if create_mesh:
+		get_mesh()
+	
+func run_origin(o):
+	origin = o
+	if create_mesh:
+		get_mesh()
+	
+func run_create_mesh(b):
+	create_mesh = b
+	if create_mesh:
+		get_mesh()
+	else:
+		$TerrainMesh.mesh = null
 
+#utility functions
 func surface_tool_plane(size: Vector2) -> Mesh:
 	var val_grid: Array = []
 	for x in range(0, size.x + 1):
