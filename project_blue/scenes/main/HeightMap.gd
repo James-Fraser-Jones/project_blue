@@ -2,13 +2,19 @@ tool
 extends Node
 
 #mesh parameters
-export var size: Vector2 = Vector2.ONE*255 setget run_size
+export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
 export(float, 0, 200) var height_scale = 100 setget run_height_scale
 
-#noise parameters
+#base noise parameters
 export var noise_seed: int = 42 setget run_noise_seed
-export(float, 0.01, 3) var zoom = 1 setget run_zoom
+export var octaves: int = 3 setget run_octaves
+export var period: float = 64 setget run_period
+export var persistence: float = 0.5 setget run_persistence
+export var lacunarity: float = 2 setget run_lacunarity
+
+#custom noise parameters
+export(float, 0.01, 3) var zoom = 0.3 setget run_zoom
 export var origin: Vector2 = Vector2.ZERO setget run_origin
 
 export var create_mesh: bool setget run_create_mesh
@@ -20,16 +26,23 @@ var zoom_vec: Vector2 = Vector2.ONE * zoom
 
 func _ready():
 	noise.set_seed(noise_seed)
+	noise.set_octaves(octaves)
+	noise.set_period(period)
+	noise.set_persistence(persistence)
+	noise.set_lacunarity(lacunarity)
 
 func get_mesh():
 	var cell_num: Vector2 = (size*res_vec).floor()
 	var step_size: Vector2 = Vector2.ONE/res_vec
 	
+	var centre_point: Vector2 = (cell_num + Vector2.ONE)/2
+	var zoom_correction: Vector2 = ((centre_point * zoom_vec) - centre_point)/zoom_vec
+	
 	var noise_map: Array = []
 	for x in range(0, cell_num.x + 1):
 		var noise_row: Array = []
 		for y in range(0, cell_num.y + 1):
-			noise_row.append(noise.get_noise_2d((x + origin.x)/zoom_vec.x, (y + origin.y)/zoom_vec.y))
+			noise_row.append(noise.get_noise_2dv(Vector2(x,y)/zoom_vec + zoom_correction + origin))
 		noise_map.append(noise_row)
 	
 	var st = SurfaceTool.new()
@@ -86,6 +99,30 @@ func run_height_scale(h):
 func run_noise_seed(s):
 	noise_seed = s
 	noise.set_seed(noise_seed)
+	if create_mesh:
+		get_mesh()
+		
+func run_octaves(o):
+	octaves = o
+	noise.set_octaves(octaves)
+	if create_mesh:
+		get_mesh()
+		
+func run_period(p):
+	period = p
+	noise.set_period(period)
+	if create_mesh:
+		get_mesh()
+		
+func run_persistence(p):
+	persistence = p
+	noise.set_persistence(persistence)
+	if create_mesh:
+		get_mesh()
+		
+func run_lacunarity(l):
+	lacunarity = l
+	noise.set_lacunarity(lacunarity)
 	if create_mesh:
 		get_mesh()
 	
