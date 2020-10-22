@@ -22,6 +22,7 @@ export var lacunarity: float = 2 setget run_lacunarity
 export(float, 0.01, 3) var zoom = 0.3 setget run_zoom
 export var origin: Vector2 = Vector2.ZERO setget run_origin
 
+#commands
 export var create_mesh: bool setget run_create_mesh
 
 #global variables
@@ -31,6 +32,7 @@ var zoom_vec: Vector2 = Vector2.ONE * zoom
 var height_curve_acc: float = 0.0
 var height_curve_data: Array
 
+#callback functions
 func _ready():
 	noise.set_seed(noise_seed)
 	noise.set_octaves(octaves)
@@ -46,16 +48,12 @@ func _process(delta):
 			var new_curve_data = get_curve_data(height_curve)
 			if !is_same_curve(height_curve_data, new_curve_data):
 				if create_mesh:
-					get_mesh()
+					generate()
 				height_curve_data = new_curve_data
 		height_curve_acc = new_acc
 
-func get_mesh():
-	var cell_num: Vector2 = (size*res_vec).floor()
-	var corrected_res: Vector2 = cell_num/size
-	var cell_size: Vector2 = Vector2.ONE/corrected_res
-	var centre_point: Vector2 = origin + size/2
-	
+#heavy lifting functions
+func get_noise_map(cell_num: Vector2, cell_size: Vector2, origin: Vector2, centre_point: Vector2) -> Array:
 	var noise_map: Array = []
 	noise_map.resize(cell_num.x + 1)
 	for x in range(0, cell_num.x + 1):
@@ -66,7 +64,9 @@ func get_mesh():
 			var zoomed_noise_point = (noise_point - centre_point)/zoom_vec + centre_point
 			noise_row[y] = noise.get_noise_2dv(zoomed_noise_point)
 		noise_map[x] = noise_row
-	
+	return noise_map
+
+func get_mesh(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Mesh:
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var val
@@ -74,7 +74,6 @@ func get_mesh():
 		for y in range(0, cell_num.y):
 			#first triangle
 			val = (noise_map[x][y] + 1)/2
-			
 			st.add_color(Color.from_hsv(val,1,1))
 			st.add_vertex(Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
@@ -100,70 +99,78 @@ func get_mesh():
 	var material: SpatialMaterial = SpatialMaterial.new()
 	material.vertex_color_use_as_albedo = true
 	mesh.surface_set_material(0, material)
-	$TerrainMesh.mesh = mesh
+	return mesh
+
+func generate():
+	var cell_num: Vector2 = (size*res_vec).floor() 		#how many squares total
+	var corrected_res: Vector2 = cell_num/size 			#how many cells fit into a unit
+	var cell_size: Vector2 = Vector2.ONE/corrected_res 	#how big each cell is
+	var centre_point: Vector2 = origin + size/2 		#center point of all the block
+	var noise_map: Array = get_noise_map(cell_num, cell_size, origin, centre_point)
+	$TerrainMesh.mesh = get_mesh(cell_num, cell_size, noise_map)
 	
 #getter setters
 func run_size(s):
 	size = s
 	if create_mesh:
-		get_mesh()
+		generate()
 
 func run_res(r):
 	res = r
 	res_vec = Vector2.ONE * res
 	if create_mesh:
-		get_mesh()
+		generate()
 		
 func run_height_scale(h):
 	height_scale = h
 	if create_mesh:
-		get_mesh()
+		generate()
 
 func run_noise_seed(s):
 	noise_seed = s
 	noise.set_seed(noise_seed)
 	if create_mesh:
-		get_mesh()
+		generate()
 		
 func run_octaves(o):
 	octaves = o
 	noise.set_octaves(octaves)
 	if create_mesh:
-		get_mesh()
+		generate()
 		
 func run_period(p):
 	period = p
 	noise.set_period(period)
 	if create_mesh:
-		get_mesh()
+		generate()
 		
 func run_persistence(p):
 	persistence = p
 	noise.set_persistence(persistence)
 	if create_mesh:
-		get_mesh()
+		generate()
 		
 func run_lacunarity(l):
 	lacunarity = l
 	noise.set_lacunarity(lacunarity)
 	if create_mesh:
-		get_mesh()
+		generate()
 	
 func run_zoom(z):
 	zoom = z
 	zoom_vec = Vector2.ONE * zoom
 	if create_mesh:
-		get_mesh()
+		generate()
 	
 func run_origin(o):
 	origin = o
 	if create_mesh:
-		get_mesh()
+		generate()
 	
 func run_create_mesh(b):
 	create_mesh = b
 	if create_mesh:
-		get_mesh()
+		generate()
 	else:
 		$TerrainMesh.mesh = null
 
@@ -184,6 +191,11 @@ func get_curve_data(curve: Curve) -> Array:
 		data.append(curve.get_point_right_tangent(i))
 	return data
 
+func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
+	var normal = (c - a).cross(b - a).normalized()
+	return -normal if flip else normal
+	
+#examples
 func surface_tool_plane(size: Vector2) -> Mesh:
 	var val_grid: Array = []
 	for x in range(0, size.x + 1):
@@ -247,7 +259,3 @@ func array_mesh_triangle() -> Mesh:
 	arrays[ArrayMesh.ARRAY_NORMAL] = normals
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
-	
-func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
-	var normal = (c - a).cross(b - a).normalized()
-	return -normal if flip else normal
