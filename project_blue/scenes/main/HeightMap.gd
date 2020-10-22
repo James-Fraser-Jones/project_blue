@@ -1,13 +1,15 @@
 tool
 extends Node
 
-const SignalCurve = preload("res://scenes/main/SignalCurve.gd")
-
 #mesh parameters
 export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
 export(float, 0, 200) var height_scale = 50 setget run_height_scale
+
+#height curve parameters
 export var height_curve: Curve
+export var height_curve_polling: bool = true
+export var height_curve_poll_rate: float = 0.1
 
 #base noise parameters
 export var noise_seed: int = 42 setget run_noise_seed
@@ -22,12 +24,12 @@ export var origin: Vector2 = Vector2.ZERO setget run_origin
 
 export var create_mesh: bool setget run_create_mesh
 
-export var new_height_curve: bool setget run_new_height_curve
-
 #global variables
 var noise = OpenSimplexNoise.new()
 var res_vec: Vector2 = Vector2.ONE * res
 var zoom_vec: Vector2 = Vector2.ONE * zoom
+var height_curve_acc: float = 0.0
+var height_curve_data: Array
 
 func _ready():
 	noise.set_seed(noise_seed)
@@ -35,6 +37,18 @@ func _ready():
 	noise.set_period(period)
 	noise.set_persistence(persistence)
 	noise.set_lacunarity(lacunarity)
+	height_curve_data = get_curve_data(height_curve)
+
+func _process(delta):
+	if height_curve_polling:
+		var new_acc: float = fmod(height_curve_acc + delta, height_curve_poll_rate)
+		if new_acc < height_curve_acc:
+			var new_curve_data = get_curve_data(height_curve)
+			if !is_same_curve(height_curve_data, new_curve_data):
+				if create_mesh:
+					get_mesh()
+				height_curve_data = new_curve_data
+		height_curve_acc = new_acc
 
 func get_mesh():
 	var cell_num: Vector2 = (size*res_vec).floor()
@@ -153,14 +167,8 @@ func run_create_mesh(b):
 	else:
 		$TerrainMesh.mesh = null
 
-func run_new_height_curve(_b):
-	height_curve = SignalCurve.new()
-	height_curve.add_point(Vector2.ZERO, 0, 0, Curve.TANGENT_LINEAR)
-	height_curve.add_point(Vector2.ONE, 0, 0, Curve.TANGENT_LINEAR)
-	height_curve.set_point_value(0, 0.5)
-
 #utility functions
-func is_same_curve(pos: Array, pos2: Array) -> bool: #check tangents as well
+func is_same_curve(pos: Array, pos2: Array) -> bool:
 	if pos.size() != pos2.size():
 		return false
 	for i in range(0, pos.size()):
@@ -168,11 +176,13 @@ func is_same_curve(pos: Array, pos2: Array) -> bool: #check tangents as well
 			return false
 	return true
 
-func get_curve_data(curve: Curve) -> Array: #do tangents as well
-	var positions: Array
+func get_curve_data(curve: Curve) -> Array:
+	var data: Array
 	for i in range(0, curve.get_point_count()):
-		positions.append(curve.get_point_position(i))
-	return positions
+		data.append(curve.get_point_position(i))
+		data.append(curve.get_point_left_tangent(i))
+		data.append(curve.get_point_right_tangent(i))
+	return data
 
 func surface_tool_plane(size: Vector2) -> Mesh:
 	var val_grid: Array = []
