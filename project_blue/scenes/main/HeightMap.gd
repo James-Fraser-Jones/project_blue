@@ -1,11 +1,13 @@
 tool
 extends Node
 
+const SignalCurve = preload("res://scenes/main/SignalCurve.gd")
+
 #mesh parameters
 export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
 export(float, 0, 200) var height_scale = 50 setget run_height_scale
-export var height_curve: CurveTexture setget run_height_curve
+export var height_curve: Curve
 
 #base noise parameters
 export var noise_seed: int = 42 setget run_noise_seed
@@ -20,6 +22,8 @@ export var origin: Vector2 = Vector2.ZERO setget run_origin
 
 export var create_mesh: bool setget run_create_mesh
 
+export var new_height_curve: bool setget run_new_height_curve
+
 #global variables
 var noise = OpenSimplexNoise.new()
 var res_vec: Vector2 = Vector2.ONE * res
@@ -31,10 +35,6 @@ func _ready():
 	noise.set_period(period)
 	noise.set_persistence(persistence)
 	noise.set_lacunarity(lacunarity)
-	height_curve = CurveTexture.new()
-	height_curve.curve = Curve.new()
-	height_curve.curve.add_point(Vector2.ZERO)
-	height_curve.curve.add_point(Vector2.ONE)
 
 func get_mesh():
 	var cell_num: Vector2 = (size*res_vec).floor()
@@ -62,24 +62,24 @@ func get_mesh():
 			val = (noise_map[x][y] + 1)/2
 			
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 			
 			#second triangle
 			val = (noise_map[x][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3(x * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 			val = (noise_map[x+1][y] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, y * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y))
 			val = (noise_map[x+1][y+1] + 1)/2
 			st.add_color(Color.from_hsv(val,1,1))
-			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
+			st.add_vertex(Vector3((x+1) * cell_size.x, height_curve.interpolate_baked(val) * height_scale, (y+1) * cell_size.y))
 	st.index()
 	st.generate_normals()
 	var mesh: ArrayMesh = st.commit()
@@ -153,12 +153,27 @@ func run_create_mesh(b):
 	else:
 		$TerrainMesh.mesh = null
 
-func run_height_curve(c):
-	height_curve = c
-	if create_mesh:
-		get_mesh()
+func run_new_height_curve(_b):
+	height_curve = SignalCurve.new()
+	height_curve.add_point(Vector2.ZERO, 0, 0, Curve.TANGENT_LINEAR)
+	height_curve.add_point(Vector2.ONE, 0, 0, Curve.TANGENT_LINEAR)
+	height_curve.set_point_value(0, 0.5)
 
 #utility functions
+func is_same_curve(pos: Array, pos2: Array) -> bool: #check tangents as well
+	if pos.size() != pos2.size():
+		return false
+	for i in range(0, pos.size()):
+		if pos[i] != pos2[i]:
+			return false
+	return true
+
+func get_curve_data(curve: Curve) -> Array: #do tangents as well
+	var positions: Array
+	for i in range(0, curve.get_point_count()):
+		positions.append(curve.get_point_position(i))
+	return positions
+
 func surface_tool_plane(size: Vector2) -> Mesh:
 	var val_grid: Array = []
 	for x in range(0, size.x + 1):
