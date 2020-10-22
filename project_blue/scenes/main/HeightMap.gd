@@ -96,9 +96,87 @@ func get_mesh(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Mesh:
 	st.index()
 	st.generate_normals()
 	var mesh: ArrayMesh = st.commit()
+	
 	var material: SpatialMaterial = SpatialMaterial.new()
 	material.vertex_color_use_as_albedo = true
 	mesh.surface_set_material(0, material)
+	return mesh
+
+func get_mesh_arr(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Mesh:
+	#set up arraymesh arrays
+	var mesh = ArrayMesh.new()
+	var arrays = []
+	var vertices = PoolVector3Array()
+	var colors = PoolColorArray()
+	var normals = PoolVector3Array()
+	var indices = PoolIntArray()
+	
+	#resize arrays
+	arrays.resize(ArrayMesh.ARRAY_MAX)
+	var vertex_num: int = (cell_num.x + 1)*(cell_num.y + 1)
+	vertices.resize(vertex_num)
+	colors.resize(vertex_num)
+	normals.resize(vertex_num)
+	indices.resize(cell_num.x * cell_num.y * 6) #2 triangles per cell, 3 indices per triangle
+	
+	#add positions and colors per point
+	for y in range(0, cell_num.y + 1):
+		for x in range(0, cell_num.x + 1):
+			var index = x + y * (cell_num.x + 1)
+			var val = (noise_map[x][y] + 1)/2
+			vertices[index] = Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y)
+			colors[index] = Color.from_hsv(val,1,1)
+	
+	#add normals and indices per cell
+	for y in range(0, cell_num.y):
+		for x in range(0, cell_num.x):
+			#get cell indices
+			var cell_index = x + y * cell_num.x
+			var index_index = cell_index * 6
+			#get point indices
+			var top_left = x + y * (cell_num.x + 1)
+			var top_right = (x+1) + y * (cell_num.x + 1)
+			var bottom_left = x + (y+1) * (cell_num.x + 1)
+			var bottom_right = (x+1) + (y+1) * (cell_num.x + 1)
+			
+			#first triangle indices
+			indices[index_index] = top_left
+			indices[index_index + 1] = bottom_right
+			indices[index_index + 2] = bottom_left
+			
+			#second triangle indices
+			indices[index_index + 3] = bottom_right
+			indices[index_index + 4] = top_left
+			indices[index_index + 5] = top_right
+			
+			#first triangle normals
+			var normal1: Vector3 = get_normal(vertices[top_left], vertices[bottom_right], vertices[bottom_left])
+			normals[top_left] += normal1
+			normals[bottom_right] += normal1
+			normals[bottom_left] += normal1
+			
+			#second triangle normals
+			var normal2: Vector3 = get_normal(vertices[bottom_right], vertices[top_left], vertices[top_right])
+			normals[bottom_right] += normal2
+			normals[top_left] += normal2
+			normals[top_right] += normal2
+			
+	#normalize normals
+	for i in range(0, vertex_num):
+		normals[i] = normals[i].normalized()
+	
+	#commit to mesh
+	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
+	arrays[ArrayMesh.ARRAY_COLOR] = colors
+	arrays[ArrayMesh.ARRAY_NORMAL] = normals
+	arrays[ArrayMesh.ARRAY_INDEX] = indices
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	
+	#add vertex color material
+	var material: SpatialMaterial = SpatialMaterial.new()
+	material.vertex_color_use_as_albedo = true
+	mesh.surface_set_material(0, material)
+	
 	return mesh
 
 func generate():
@@ -107,7 +185,7 @@ func generate():
 	var cell_size: Vector2 = Vector2.ONE/corrected_res 	#how big each cell is
 	var centre_point: Vector2 = origin + size/2 		#center point of all the block
 	var noise_map: Array = get_noise_map(cell_num, cell_size, origin, centre_point)
-	$TerrainMesh.mesh = get_mesh(cell_num, cell_size, noise_map)
+	$TerrainMesh.mesh = get_mesh_arr(cell_num, cell_size, noise_map)
 	
 #getter setters
 func run_size(s):
