@@ -1,0 +1,60 @@
+[gd_resource type="ShaderMaterial" load_steps=6 format=2]
+
+[sub_resource type="Shader" id=4]
+code = "shader_type spatial;
+render_mode specular_toon;
+
+uniform float height_scale = 0.3;
+uniform sampler2D noise;
+uniform sampler2D normal_map;
+uniform vec3 color = vec3(0.01, 0.03, 0.05);
+uniform float time_scale = 5.0;
+
+varying vec2 tex_position;
+
+float height(vec2 position, float time) {
+  vec2 offset = 0.01 * cos(position + time*time_scale);
+  return texture(noise, (position / 1.0) - offset).x;
+}
+
+void vertex() {
+	tex_position = VERTEX.xz/2.0 + 0.5;
+	float k = height(tex_position, TIME);
+	VERTEX.y += k * height_scale;
+	NORMAL = normalize(vec3(k - height(tex_position + vec2(0.3, 0.0), TIME), 1, k - height(tex_position + vec2(0.0, 0.3), TIME)));
+}
+
+void fragment() {
+	NORMALMAP = texture(normal_map, tex_position).xyz;
+	float fresnel = sqrt(1.0 - dot(NORMAL, VIEW));
+	ALBEDO = color + (0.1 * fresnel);
+	METALLIC = 0.0;
+  	ROUGHNESS = 0.01 * (1.0 - fresnel);
+	RIM = 0.2;
+}"
+
+[sub_resource type="OpenSimplexNoise" id=6]
+period = 8.0
+
+[sub_resource type="NoiseTexture" id=7]
+width = 64
+height = 64
+noise = SubResource( 6 )
+
+[sub_resource type="OpenSimplexNoise" id=8]
+period = 8.0
+
+[sub_resource type="NoiseTexture" id=9]
+width = 64
+height = 64
+as_normalmap = true
+bump_strength = 5.0
+noise = SubResource( 8 )
+
+[resource]
+shader = SubResource( 4 )
+shader_param/height_scale = 0.3
+shader_param/color = Vector3( -0.134, 0.093, 0.28 )
+shader_param/time_scale = 5.0
+shader_param/noise = SubResource( 7 )
+shader_param/normal_map = SubResource( 9 )

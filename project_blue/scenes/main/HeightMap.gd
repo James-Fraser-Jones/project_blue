@@ -1,6 +1,8 @@
 tool
 extends Node
 
+export var material: Material
+
 #mesh parameters
 export var size: Vector2 = Vector2.ONE*25 setget run_size
 export(float, 0.1, 4) var res = 1 setget run_res
@@ -97,9 +99,12 @@ func get_mesh(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Mesh:
 	st.generate_normals()
 	var mesh: ArrayMesh = st.commit()
 	
-	var material: SpatialMaterial = SpatialMaterial.new()
-	material.vertex_color_use_as_albedo = true
-	mesh.surface_set_material(0, material)
+	if material:
+		mesh.surface_set_material(0, material)
+	else:
+		var material: SpatialMaterial = SpatialMaterial.new()
+		material.vertex_color_use_as_albedo = true
+		mesh.surface_set_material(0, material)
 	return mesh
 
 func get_mesh_arr(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Mesh:
@@ -165,18 +170,20 @@ func get_mesh_arr(cell_num: Vector2, cell_size: Vector2, noise_map: Array) -> Me
 	for i in range(0, vertex_num):
 		normals[i] = normals[i].normalized()
 	
-	#commit to mesh
+	#commit surface to mesh
 	arrays[ArrayMesh.ARRAY_VERTEX] = vertices
 	arrays[ArrayMesh.ARRAY_COLOR] = colors
 	arrays[ArrayMesh.ARRAY_NORMAL] = normals
 	arrays[ArrayMesh.ARRAY_INDEX] = indices
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	
-	#add vertex color material
-	var material: SpatialMaterial = SpatialMaterial.new()
-	material.vertex_color_use_as_albedo = true
-	mesh.surface_set_material(0, material)
-	
+	#add vertex color material to mesh surface
+	if material:
+		mesh.surface_set_material(0, material)
+	else:
+		var material: SpatialMaterial = SpatialMaterial.new()
+		material.vertex_color_use_as_albedo = true
+		mesh.surface_set_material(0, material)
 	return mesh
 
 func generate():
