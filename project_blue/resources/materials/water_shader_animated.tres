@@ -55,6 +55,6 @@ noise = SubResource( 4 )
 shader = SubResource( 1 )
 shader_param/height_scale = 0.3
 shader_param/color = Vector3( -0.09, 0.055, 0.324 )
-shader_param/time_scale = 5.0
+shader_param/time_scale = 0.5
 shader_param/noise = SubResource( 3 )
 shader_param/normal_map = SubResource( 5 )
