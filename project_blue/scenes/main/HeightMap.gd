@@ -2,12 +2,12 @@ tool
 extends Node
 
 export var material: Material
-export(int, 1, 256) var max_threads = 1
 
 #mesh parameters
-export var size: Vector2 = Vector2.ONE*25 setget run_size
+export var block_num: Vector2 = Vector2.ONE setget run_block_num
+export var block_size: Vector2 = Vector2.ONE*100 setget run_block_size
 export(float, 0.1, 4) var res = 1 setget run_res
-export(float, 0, 200) var height_scale = 50 setget run_height_scale
+export(float, 0, 200) var height_scale = 20 setget run_height_scale
 
 #height curve parameters
 export var height_curve: Curve
@@ -22,7 +22,7 @@ export var persistence: float = 0.5 setget run_persistence
 export var lacunarity: float = 2 setget run_lacunarity
 
 #custom noise parameters
-export(float, 0.01, 3) var zoom = 0.3 setget run_zoom
+export(float, 0.01, 3) var zoom = 0.2 setget run_zoom
 export var origin: Vector2 = Vector2.ZERO setget run_origin
 
 #commands
@@ -75,20 +75,17 @@ func get_mesh_surface(cell_num: Vector2, cell_size: Vector2, origin: Vector2, ce
 	#get noise, add positions and colors per point
 	for y in range(0, cell_num.y + 1):
 		for x in range(0, cell_num.x + 1):
-			#THREAD
 			var noise_point = origin + Vector2(x, y)*cell_size
 			var zoomed_noise_point = (noise_point - centre_point)/zoom_vec + centre_point
 			var val = (noise.get_noise_2dv(zoomed_noise_point) + 1)/2 #bring range to [0-1]
 			var index = x + y * (cell_num.x + 1)
-			vertices[index] = Vector3(x * cell_size.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y)
+			var centering_offset : Vector2 = Vector2(block_size.x/2 if int(block_num.x) % 2 == 1 else 0, block_size.y/2 if int(block_num.y) % 2 == 1 else 0)
+			vertices[index] = Vector3(x * cell_size.x - centering_offset.x, height_curve.interpolate_baked(val) * height_scale, y * cell_size.y - centering_offset.y)
 			colors[index] = Color.from_hsv(val,1,1)
-	
-	#SYNC
 	
 	#add normals and indices per cell
 	for y in range(0, cell_num.y):
 		for x in range(0, cell_num.x):
-			#THREAD
 			
 			#get cell indices
 			var cell_index = x + y * cell_num.x
@@ -122,11 +119,8 @@ func get_mesh_surface(cell_num: Vector2, cell_size: Vector2, origin: Vector2, ce
 			normals[top_left] += normal2
 			normals[top_right] += normal2
 	
-	#SYNC
-	
 	#normalize normals
 	for i in range(0, vertex_num):
-		#THREAD
 		normals[i] = normals[i].normalized()
 	
 	#return surface
@@ -137,10 +131,10 @@ func get_mesh_surface(cell_num: Vector2, cell_size: Vector2, origin: Vector2, ce
 	return surface
 
 func generate():
-	var cell_num: Vector2 = (size*res_vec).floor() 		#how many squares total
-	var corrected_res: Vector2 = cell_num/size 			#how many cells fit into a unit
-	var cell_size: Vector2 = Vector2.ONE/corrected_res 	#how big each cell is
-	var centre_point: Vector2 = origin + size/2 		#center point of all the block
+	var cell_num: Vector2 = (block_size*res_vec).floor() 	#how many squares total
+	var corrected_res: Vector2 = cell_num/block_size 		#how many cells fit into a unit
+	var cell_size: Vector2 = Vector2.ONE/corrected_res 		#how big each cell is
+	var centre_point: Vector2 = origin + block_size/2 		#center point of all the blocks
 	var mesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, get_mesh_surface(cell_num, cell_size, origin, centre_point))
 	for i in range(0, mesh.get_surface_count()):
@@ -179,8 +173,13 @@ func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vecto
 	return -normal if flip else normal
 
 #getter setters
-func run_size(s):
-	size = s
+func run_block_num(n):
+	block_num = n
+	if create_mesh:
+		generate()
+
+func run_block_size(s):
+	block_size = s
 	if create_mesh:
 		generate()
 
