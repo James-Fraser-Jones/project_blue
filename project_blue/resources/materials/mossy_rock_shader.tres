@@ -53,7 +53,7 @@ vec4 triplanar_texture(vec3 p_weights, vec3 p_triplanar_pos, float height_p) {
 		samp += texture(texture_grass, p_triplanar_pos.xz) * p_weights.y;
 	}
 	else{
-		samp += texture(texture_sand, p_triplanar_pos.xz) * p_weights.y;
+		samp += texture(texture_sand,p_triplanar_pos.xz) * p_weights.y;
 	}
 	samp += texture(texture_rock, p_triplanar_pos.zy * vec2(-1.0, 1.0)) * p_weights.x;
 	return samp;
@@ -74,7 +74,7 @@ shader_param/specular = 0.5
 shader_param/metallic = 0.0
 shader_param/roughness = 1.0
 shader_param/uv1_blend_sharpness = 3.0
-shader_param/sand_height = 2.0
+shader_param/sand_height = 2.247
 shader_param/albedo = Color( 1, 1, 1, 1 )
 shader_param/uv1_scale = Vector3( 0.05, 0.05, 0.05 )
 shader_param/uv1_offset = Vector3( 0, 0, 0 )
