@@ -18,7 +18,7 @@ export var height_curve_poll_rate: float = 0.1
 export var noise_seed: int = 42 setget run_noise_seed
 export var octaves: int = 3 setget run_octaves
 export var period: float = 64 setget run_period
-export var persistence: float = 0.5 setget run_persistence
+export(float, 0, 1) var persistence = 0.5 setget run_persistence
 export var lacunarity: float = 2 setget run_lacunarity
 
 #custom noise parameters
