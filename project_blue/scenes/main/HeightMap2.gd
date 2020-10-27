@@ -3,6 +3,7 @@ extends Node
 
 export var noise_layers: Array = []
 export var height_layers: Array = []
+export var width_layers: Array = []
 export var default_layer_height: float = 1.0
 export var noise_seed: int = 42 setget run_noise_seed
 export var period_scale: float = 64.0
@@ -14,7 +15,7 @@ export var material: Material
 
 export var add_layer: bool setget run_add_layer
 export var reset_layers: bool setget run_reset_layers
-export var create_mesh: bool #setget run_create_mesh
+export var create_mesh: bool
 export var poll_rate: float = 0.5
 
 var poll_acc: float = 0.0
@@ -45,9 +46,11 @@ func run_add_layer(_s):
 	new_noise.octaves = 1
 	noise_layers.append(new_noise)
 	height_layers.append(default_layer_height)
+	width_layers.append(Vector2(-1, 1))
 func run_reset_layers(_s):
 	noise_layers = []
 	height_layers = []
+	width_layers = []
 	run_add_layer(false)
 func run_resolution(s):
 	resolution = s
@@ -69,14 +72,14 @@ func generate():
 func get_mesh_surface():
 	var surface = []
 	surface.resize(ArrayMesh.ARRAY_MAX)
-	update_arrays()
+	update_arrays(null)
 	surface[ArrayMesh.ARRAY_VERTEX] = vertices
 	surface[ArrayMesh.ARRAY_COLOR] = colors
 	surface[ArrayMesh.ARRAY_NORMAL] = normals
 	surface[ArrayMesh.ARRAY_INDEX] = indices
 	return surface
 
-func update_arrays():
+func update_arrays(_s):
 	var vertex_num: int = pow(resolution + 1, 2)
 	var cell_num: int = pow(resolution, 2)
 	var cell_size: float = 1/float(resolution)
@@ -87,7 +90,9 @@ func update_arrays():
 			var noise: float = 0.0
 			for i in range(0, noise_layers.size()):
 				var raw_noise = noise_layers[i].get_noise_2d(x * cell_size * period_scale, y * cell_size * period_scale)
-				noise += ((raw_noise + 1)/2) * height_layers[i] * scale #range [0-1] * height
+				if raw_noise >= width_layers[i].x and raw_noise <= width_layers[i].y:
+					var final_noise = ((raw_noise + 1)/2) * height_layers[i] * scale
+					noise += final_noise
 			var index = x + y * (resolution + 1)
 			vertices[index] = Vector3(x * cell_size * scale, noise, y * cell_size * scale)
 			colors[index] = Color.from_hsv(fposmod(noise/scale, 1),1,1)
@@ -149,3 +154,10 @@ func create_arrays():
 	if !colors: colors = PoolColorArray()
 	if !normals: normals = PoolVector3Array()
 	if !indices: indices = PoolIntArray()
+
+#c and d are end points of original range (i.e. corner values [-1, 1])
+#a and b are end points of new range (i.e. local-space co-ordinates across relevant axis [0, 1])
+#x is the target value of the original range (i.e. 0)
+#returns target value of the new range (i.e. coordinate across that edge)
+func interp(a: float, b: float, c: float, d: float, x: float) -> float:
+	return a + (b-a)*abs(x-c)/abs(d-c)
