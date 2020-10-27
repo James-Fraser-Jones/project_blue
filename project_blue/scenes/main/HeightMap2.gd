@@ -3,12 +3,12 @@ extends Node
 
 export var noise_layers: Array = []
 export var height_layers: Array = []
+export var default_layer_height: float = 1.0
 export var noise_seed: int = 42 setget run_noise_seed
 export var period_scale: float = 64.0
-export var default_height: float = 100.0
 
-export(float, EXP, 0.1, 100) var scale = 100.0 #scale entire terrain x,z
-export(int, 1.0, 200.0) var resolution = 25.0 #sqrt of total cells
+export(float, EXP, 0.1, 100) var scale = 100.0 #scale entire terrain
+export(int, 1.0, 200.0) var resolution = 25.0 setget run_resolution #sqrt of total cells
 export var center_mesh: bool = true #whether to subtract half the scale from x and z
 export var material: Material
 
@@ -19,12 +19,22 @@ export var poll_rate: float = 0.5
 
 var poll_acc: float = 0.0
 
+var vertices: PoolVector3Array
+var colors: PoolColorArray
+var normals: PoolVector3Array
+var indices: PoolIntArray
+
+#callbacks
+func _ready():
+	create_arrays()
 func _process(delta):
-	var new_acc: float = fmod(poll_acc + delta, poll_rate)
-	if new_acc < poll_acc:
-		if create_mesh:
+	if create_mesh:
+		var new_acc: float = fmod(poll_acc + delta, poll_rate)
+		if new_acc < poll_acc:
 			generate()
-	poll_acc = new_acc
+		poll_acc = new_acc		
+
+#settergetters	
 func run_noise_seed(s):
 	noise_seed = s
 	for i in range(0, noise_layers.size()):
@@ -32,13 +42,18 @@ func run_noise_seed(s):
 func run_add_layer(_s):
 	var new_noise = OpenSimplexNoise.new()
 	new_noise.seed = noise_seed
+	new_noise.octaves = 1
 	noise_layers.append(new_noise)
-	height_layers.append(default_height)
+	height_layers.append(default_layer_height)
 func run_reset_layers(_s):
 	noise_layers = []
 	height_layers = []
 	run_add_layer(false)
+func run_resolution(s):
+	resolution = s
+	resize_arrays()
 
+#heavylifters
 func generate():
 	var mesh = ArrayMesh.new()
 	var surface: Array = get_mesh_surface()
@@ -51,34 +66,28 @@ func generate():
 		mesh.surface_set_material(0, material)
 	$TerrainMesh.mesh = mesh
 
-func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
-	var normal = (c - a).cross(b - a).normalized()
-	return -normal if flip else normal
-	
 func get_mesh_surface():
 	var surface = []
-	var vertices = PoolVector3Array()
-	var colors = PoolColorArray()
-	var normals = PoolVector3Array()
-	var indices = PoolIntArray()
-	
+	surface.resize(ArrayMesh.ARRAY_MAX)
+	update_arrays()
+	surface[ArrayMesh.ARRAY_VERTEX] = vertices
+	surface[ArrayMesh.ARRAY_COLOR] = colors
+	surface[ArrayMesh.ARRAY_NORMAL] = normals
+	surface[ArrayMesh.ARRAY_INDEX] = indices
+	return surface
+
+func update_arrays():
 	var vertex_num: int = pow(resolution + 1, 2)
 	var cell_num: int = pow(resolution, 2)
 	var cell_size: float = 1/float(resolution)
-	
-	#resize arrays
-	vertices.resize(vertex_num)
-	colors.resize(vertex_num)
-	normals.resize(vertex_num)
-	indices.resize(cell_num * 6) #2 triangles per cell, 3 indices per triangle
-	surface.resize(ArrayMesh.ARRAY_MAX)
 	
 	#get noise, add positions and colors per vertex
 	for y in range(0, resolution + 1):
 		for x in range(0, resolution + 1):
 			var noise: float = 0.0
 			for i in range(0, noise_layers.size()):
-				noise += noise_layers[i].get_noise_2d(x * cell_size * period_scale, y * cell_size * period_scale) * height_layers[i]
+				var raw_noise = noise_layers[i].get_noise_2d(x * cell_size * period_scale, y * cell_size * period_scale)
+				noise += ((raw_noise + 1)/2) * height_layers[i] * scale #range [0-1] * height
 			var index = x + y * (resolution + 1)
 			vertices[index] = Vector3(x * cell_size * scale, noise, y * cell_size * scale)
 			colors[index] = Color.from_hsv(fposmod(noise/scale, 1),1,1)
@@ -122,10 +131,21 @@ func get_mesh_surface():
 	#normalize normals
 	for i in range(0, vertex_num):
 		normals[i] = normals[i].normalized()
+
+func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vector3:
+	var normal = (c - a).cross(b - a).normalized()
+	return -normal if flip else normal
+
+func resize_arrays():
+	var vertex_num: int = pow(resolution + 1, 2)
+	var cell_num: int = pow(resolution, 2)
+	vertices.resize(vertex_num)
+	colors.resize(vertex_num)
+	normals.resize(vertex_num)
+	indices.resize(cell_num * 6)
 	
-	#return surface
-	surface[ArrayMesh.ARRAY_VERTEX] = vertices
-	surface[ArrayMesh.ARRAY_COLOR] = colors
-	surface[ArrayMesh.ARRAY_NORMAL] = normals
-	surface[ArrayMesh.ARRAY_INDEX] = indices
-	return surface
+func create_arrays():
+	if !vertices: vertices = PoolVector3Array()
+	if !colors: colors = PoolColorArray()
+	if !normals: normals = PoolVector3Array()
+	if !indices: indices = PoolIntArray()
