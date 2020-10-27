@@ -1,60 +1,46 @@
 tool
 extends Node
 
-export var noise_layers: Array = []
-export var height_layers: Array = []
-export var width_layers: Array = []
-export var default_layer_height: float = 1.0
-export var noise_seed: int = 42 setget run_noise_seed
-export var period_scale: float = 64.0
+export var enable_tool: bool = false
 
-export(float, EXP, 0.1, 100) var scale = 100.0 #scale entire terrain
-export(int, 1.0, 200.0) var resolution = 25.0 setget run_resolution #sqrt of total cells
-#export var center_mesh: bool = true #whether to subtract half the scale from x and z
+export var noise: OpenSimplexNoise
+export var height_curve: Curve
+export var scale_y: float = 1.0
+
+export(float, EXP, 0.1, 500.0) var scale_xyz = 500.0
+export(int, EXP, 1.0, 500.0) var resolution = 500.0 setget run_resolution #per-axis
+
+export var scale_period: float = 64.0
+export var center_mesh: bool = true
+export var island_mesh: bool = true
+export var island_start_radius: float = 0.5
 export var material: Material
 
-export var add_layer: bool setget run_add_layer
-export var reset_layers: bool setget run_reset_layers
-export var create_mesh: bool
-export var poll_rate: float = 0.5
-
-var poll_acc: float = 0.0
+export var create_mesh: bool setget run_create_mesh
 
 var vertices: PoolVector3Array
 var colors: PoolColorArray
 var normals: PoolVector3Array
 var indices: PoolIntArray
 
-#callbacks
+#setter functions are called on initialization (loading or every save for tool scripts)
+#setter functions will be called with set values for exported vars or default values for
+#primitive types or null for reference types
+#if a set value on an exported variable is different from the default then the setter will
+#be called twice with the currently set value (not sure why)
+
 func _ready():
 	create_arrays()
-func _process(delta):
-	if create_mesh:
-		var new_acc: float = fmod(poll_acc + delta, poll_rate)
-		if new_acc < poll_acc:
-			generate()
-		poll_acc = new_acc		
-
-#settergetters	
-func run_noise_seed(s):
-	noise_seed = s
-	for i in range(0, noise_layers.size()):
-		noise_layers[i].seed = noise_seed
-func run_add_layer(_s):
-	var new_noise = OpenSimplexNoise.new()
-	new_noise.seed = noise_seed
-	new_noise.octaves = 1
-	noise_layers.append(new_noise)
-	height_layers.append(default_layer_height)
-	width_layers.append(Vector2(-1, 1))
-func run_reset_layers(_s):
-	noise_layers = []
-	height_layers = []
-	width_layers = []
-	run_add_layer(false)
-func run_resolution(s):
-	resolution = s
 	resize_arrays()
+
+func run_resolution(s):
+	if enable_tool:
+		resolution = s
+		resize_arrays()
+
+func run_create_mesh(s):
+	if enable_tool:
+		generate()
 
 #heavylifters
 func generate():
@@ -72,14 +58,14 @@ func generate():
 func get_mesh_surface():
 	var surface = []
 	surface.resize(ArrayMesh.ARRAY_MAX)
-	update_arrays(null)
+	update_arrays()
 	surface[ArrayMesh.ARRAY_VERTEX] = vertices
 	surface[ArrayMesh.ARRAY_COLOR] = colors
 	surface[ArrayMesh.ARRAY_NORMAL] = normals
 	surface[ArrayMesh.ARRAY_INDEX] = indices
 	return surface
 
-func update_arrays(_s):
+func update_arrays():
 	var vertex_num: int = pow(resolution + 1, 2)
 	var cell_num: int = pow(resolution, 2)
 	var cell_size: float = 1/float(resolution)
@@ -87,15 +73,23 @@ func update_arrays(_s):
 	#get noise, add positions and colors per vertex
 	for y in range(0, resolution + 1):
 		for x in range(0, resolution + 1):
-			var noise: float = 0.0
-			for i in range(0, noise_layers.size()):
-				var raw_noise = noise_layers[i].get_noise_2d(x * cell_size * period_scale, y * cell_size * period_scale)
-				if raw_noise >= width_layers[i].x and raw_noise <= width_layers[i].y:
-					var final_noise = ((raw_noise + 1)/2) * height_layers[i] * scale
-					noise += final_noise
+			var raw_noise_val = (noise.get_noise_2d(x * cell_size * scale_period, y * cell_size * scale_period) + 1)/2
+			var island_scale = 1
+			if island_mesh:
+				var radius = resolution / 2
+				var distance = (Vector2(x, y) - Vector2.ONE * radius).length()
+				var radius_scale = distance/radius
+				if radius_scale < island_start_radius:
+					pass
+				elif radius_scale < 1:
+					island_scale = 1 - ((radius_scale - island_start_radius)/(1-island_start_radius))
+				else:
+					island_scale = 0
+			var noise_val = raw_noise_val * scale_y * height_curve.interpolate_baked(raw_noise_val) * island_scale
 			var index = x + y * (resolution + 1)
-			vertices[index] = Vector3(x * cell_size * scale, noise, y * cell_size * scale)
-			colors[index] = Color.from_hsv(fposmod(noise/scale, 1),1,1)
+			var c = 0.5 if center_mesh else 0
+			vertices[index] = Vector3(x * cell_size - c, noise_val, y * cell_size - c) * scale_xyz
+			colors[index] = Color.from_hsv(fposmod(raw_noise_val, 1),1,1)
 	
 	#add normals and indices per cell
 	for y in range(0, resolution):
@@ -143,21 +137,15 @@ func get_normal(a: Vector3, b: Vector3, c: Vector3, flip: bool = false) -> Vecto
 
 func resize_arrays():
 	var vertex_num: int = pow(resolution + 1, 2)
-	var cell_num: int = pow(resolution, 2)
-	vertices.resize(vertex_num)
-	colors.resize(vertex_num)
-	normals.resize(vertex_num)
-	indices.resize(cell_num * 6)
+	if vertex_num != vertices.size():
+		vertices.resize(vertex_num)
+		colors.resize(vertex_num)
+		normals.resize(vertex_num)
+		var cell_num: int = pow(resolution, 2)
+		indices.resize(cell_num * 6)
 	
 func create_arrays():
-	if !vertices: vertices = PoolVector3Array()
-	if !colors: colors = PoolColorArray()
-	if !normals: normals = PoolVector3Array()
-	if !indices: indices = PoolIntArray()
-
-#c and d are end points of original range (i.e. corner values [-1, 1])
-#a and b are end points of new range (i.e. local-space co-ordinates across relevant axis [0, 1])
-#x is the target value of the original range (i.e. 0)
-#returns target value of the new range (i.e. coordinate across that edge)
-func interp(a: float, b: float, c: float, d: float, x: float) -> float:
-	return a + (b-a)*abs(x-c)/abs(d-c)
+	if vertices == null: vertices = PoolVector3Array()
+	if colors == null: colors = PoolColorArray()
+	if normals == null: normals = PoolVector3Array()
+	if indices == null: indices = PoolIntArray()
