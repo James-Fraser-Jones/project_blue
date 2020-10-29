@@ -7,13 +7,13 @@ export var noise: OpenSimplexNoise
 export var height_curve: Curve
 export var scale_y: float = 1.0
 
-export(float, EXP, 0.1, 500.0) var scale_xyz = 500.0
+export(float, EXP, 0.1, 10000.0) var scale_xyz = 500.0
 export(int, EXP, 1.0, 500.0) var resolution = 500.0 setget run_resolution #per-axis
 
 export var scale_period: float = 64.0
 export var center_mesh: bool = true
 export var island_mesh: bool = true
-export var island_start_radius: float = 0.5
+export var island_start_radius: float = 0.8
 export var material: Material
 
 export var create_mesh: bool setget run_create_mesh
@@ -85,7 +85,7 @@ func update_arrays():
 					island_scale = 1 - ((radius_scale - island_start_radius)/(1-island_start_radius))
 				else:
 					island_scale = 0
-			var noise_val = raw_noise_val * scale_y * height_curve.interpolate_baked(raw_noise_val) * island_scale
+			var noise_val = height_curve.interpolate_baked(raw_noise_val) * scale_y * island_scale
 			var index = x + y * (resolution + 1)
 			var c = 0.5 if center_mesh else 0
 			vertices[index] = Vector3(x * cell_size - c, noise_val, y * cell_size - c) * scale_xyz
