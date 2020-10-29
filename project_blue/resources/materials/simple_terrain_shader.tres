@@ -9,48 +9,83 @@ uniform float specular : hint_range(0, 1) = 0.5;
 uniform float metallic : hint_range(0, 1) = 0.0;
 uniform float roughness : hint_range(0, 1) = 1.0;
 
-uniform float terrain_height = 1.0;
+uniform float terrain_height_max = 1.0;
 
 //albedo settings
 uniform vec4 albedo_water : hint_color;
-uniform float water_height = -0.6;
+uniform float water_height_max = -0.6;
 
 uniform vec4 albedo_sand : hint_color;
-uniform float sand_height = -0.2;
-
+uniform float sand_height_max;
 uniform vec4 albedo_grass : hint_color;
-uniform float grass_height = 0.2;
+uniform float grass_height_max;
+uniform vec4 albedo_snow : hint_color;
+
+uniform float grass_sand_blend = 0.5;
+uniform float snow_grass_blend = 0.5;
 
 uniform vec4 albedo_rock : hint_color;
-uniform float rock_height = 0.6;
+uniform float rock_height_max;
+uniform vec4 albedo_stone : hint_color;
 
-uniform vec4 albedo_snow : hint_color;
-uniform float snow_height = 1.0;
+uniform float stone_rock_blend = 0.5;
 
 //variables
 varying float height;
+varying float vertical_angle;
+varying float ang_scale;
 
 void vertex() {
-	height = VERTEX.y;
+	height = VERTEX.y/terrain_height_max;
+	VERTEX.y = max(water_height_max * terrain_height_max, VERTEX.y);
+	if (height <= water_height_max){
+		NORMAL = vec3(0,1.0,0);
+	}
+	ang_scale = abs(dot(NORMAL, vec3(0,1.0,0)));
 }
 
 void fragment() {
-	if (height < water_height * terrain_height){
-		ALBEDO = albedo_water.xyz;
+	float sand_grass_boundary = sand_height_max + (grass_height_max - sand_height_max) * grass_sand_blend;
+	float grass_snow_boundary = grass_height_max + (1.0 - grass_height_max) * snow_grass_blend;
+	float rock_stone_boundary = rock_height_max + (1.0 - rock_height_max) * stone_rock_blend;
+	
+	vec3 hor_albedo;
+	if (height <= water_height_max){
+		hor_albedo = albedo_water.xyz;
 	}
-	else if (height < sand_height * terrain_height){
-		ALBEDO = albedo_sand.xyz;
+	else if (height <= sand_height_max){
+		hor_albedo = albedo_sand.xyz;
 	}
-	else if (height < grass_height * terrain_height){
-		ALBEDO = albedo_grass.xyz;
+	else if (height <= sand_grass_boundary){
+		float scale = (height - sand_height_max)/(sand_grass_boundary - sand_height_max);
+		hor_albedo = albedo_grass.xyz * scale + albedo_sand.xyz * (1.0 - scale);
 	}
-	else if (height < rock_height * terrain_height){
-		ALBEDO = albedo_rock.xyz;
-	}	
-	else if (height < snow_height * terrain_height){
-		ALBEDO = albedo_snow.xyz;
+	else if (height <= grass_height_max){
+		hor_albedo = albedo_grass.xyz;
+	}
+	else if (height <= grass_snow_boundary){
+		float scale = (height - grass_height_max)/(grass_snow_boundary - grass_height_max);
+		hor_albedo = albedo_snow.xyz * scale + albedo_grass.xyz * (1.0 - scale);
+	}
+	else{
+		hor_albedo = albedo_snow.xyz;
 	}
 	
+	vec3 vert_albedo;
+	if (height <= rock_height_max){
+		vert_albedo = albedo_rock.xyz;
+	}
+	else if (height <= rock_stone_boundary){
+		float scale = (height - rock_height_max)/(rock_stone_boundary - rock_height_max);
+		vert_albedo = albedo_stone.xyz * scale + albedo_rock.xyz * (1.0 - scale);
+	}
+	else{
+		vert_albedo = albedo_stone.xyz;
+	}
+	
+	//+ dot(vert_albedo, vec3(0,1.0,0)) * normalize(vert_albedo)
+	ALBEDO = ang_scale * hor_albedo + (1.0 - ang_scale) * vert_albedo;
+
 	SPECULAR = specular;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
@@ -62,14 +97,17 @@ shader = SubResource( 1 )
 shader_param/specular = 0.5
 shader_param/metallic = 0.0
 shader_param/roughness = 1.0
-shader_param/terrain_height = 700.0
+shader_param/terrain_height_max = 400.0
 shader_param/albedo_water = Color( 0.0392157, 0.301961, 0.576471, 1 )
-shader_param/water_height = 0.026
+shader_param/water_height_max = 0.095
 shader_param/albedo_sand = Color( 0.709804, 0.705882, 0.329412, 1 )
-shader_param/sand_height = 0.092
+shader_param/sand_height_max = 0.161
 shader_param/albedo_grass = Color( 0.0235294, 0.380392, 0.0509804, 1 )
-shader_param/grass_height = 0.188
-shader_param/albedo_rock = Color( 0.360784, 0.203922, 0, 1 )
-shader_param/rock_height = 0.369
+shader_param/grass_height_max = 0.61
 shader_param/albedo_snow = Color( 1, 1, 1, 1 )
-shader_param/snow_height = 1.0
+shader_param/grass_sand_blend = 0.176
+shader_param/snow_grass_blend = 0.085
+shader_param/albedo_rock = Color( 0.360784, 0.203922, 0, 1 )
+shader_param/rock_height_max = 0.482
+shader_param/albedo_stone = Color( 0.309804, 0.309804, 0.309804, 1 )
+shader_param/stone_rock_blend = 0.116
