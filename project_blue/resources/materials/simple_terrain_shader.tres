@@ -1,0 +1,75 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+
+[sub_resource type="Shader" id=1]
+code = "shader_type spatial;
+render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlick_ggx;
+
+//general settings
+uniform float specular : hint_range(0, 1) = 0.5;
+uniform float metallic : hint_range(0, 1) = 0.0;
+uniform float roughness : hint_range(0, 1) = 1.0;
+
+uniform float terrain_height = 1.0;
+
+//albedo settings
+uniform vec4 albedo_water : hint_color;
+uniform float water_height = -0.6;
+
+uniform vec4 albedo_sand : hint_color;
+uniform float sand_height = -0.2;
+
+uniform vec4 albedo_grass : hint_color;
+uniform float grass_height = 0.2;
+
+uniform vec4 albedo_rock : hint_color;
+uniform float rock_height = 0.6;
+
+uniform vec4 albedo_snow : hint_color;
+uniform float snow_height = 1.0;
+
+//variables
+varying float height;
+
+void vertex() {
+	height = VERTEX.y;
+}
+
+void fragment() {
+	if (height < water_height * terrain_height){
+		ALBEDO = albedo_water.xyz;
+	}
+	else if (height < sand_height * terrain_height){
+		ALBEDO = albedo_sand.xyz;
+	}
+	else if (height < grass_height * terrain_height){
+		ALBEDO = albedo_grass.xyz;
+	}
+	else if (height < rock_height * terrain_height){
+		ALBEDO = albedo_rock.xyz;
+	}	
+	else if (height < snow_height * terrain_height){
+		ALBEDO = albedo_snow.xyz;
+	}
+	
+	SPECULAR = specular;
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+}
+"
+
+[resource]
+shader = SubResource( 1 )
+shader_param/specular = 0.5
+shader_param/metallic = 0.0
+shader_param/roughness = 1.0
+shader_param/terrain_height = 500.0
+shader_param/albedo_water = Color( 0.0941176, 0.0784314, 0.568627, 1 )
+shader_param/water_height = 0.02
+shader_param/albedo_sand = Color( 0.709804, 0.705882, 0.329412, 1 )
+shader_param/sand_height = 0.042
+shader_param/albedo_grass = Color( 0.0235294, 0.380392, 0.0509804, 1 )
+shader_param/grass_height = 0.119
+shader_param/albedo_rock = Color( 0.360784, 0.203922, 0, 1 )
+shader_param/rock_height = 0.368
+shader_param/albedo_snow = Color( 1, 1, 1, 1 )
+shader_param/snow_height = 1.0
