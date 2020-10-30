@@ -1,6 +1,15 @@
 tool
 extends Node
 
+#Things I want to do:
+#Try adding exponent curve rather than manual height curve:
+#Make more "plains" ground
+#Add settings for controlling vertical vs horizontal albedo blending
+#Add water surface
+#Add textures back in somehow (texture bombing?)
+#Add LOD system?
+#Add endless system?
+
 export var enable_tool: bool = false
 
 export var noise: OpenSimplexNoise
@@ -86,6 +95,7 @@ func update_arrays():
 					island_scale = 1 - ((radius_scale - island_start_radius)/(1-island_start_radius))
 				else:
 					island_scale = 0
+			
 			var noise_val = height_curve.interpolate_baked(raw_noise_val) * scale_y * island_scale
 			var index = x + y * (resolution + 1)
 			var c = 0.5 if center_mesh else 0

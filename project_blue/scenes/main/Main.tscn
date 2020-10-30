@@ -13,19 +13,20 @@ subdivide_width = 32
 subdivide_depth = 32
 
 [sub_resource type="OpenSimplexNoise" id=2]
-seed = 3
-octaves = 4
-period = 5.0
-persistence = 0.45
+seed = 14
+octaves = 5
+period = 7.5
+persistence = 0.38
+lacunarity = 1.98
 
 [sub_resource type="Curve" id=3]
-_data = [ Vector2( 0, 0 ), 0.0, 1.67532, 0, 1, Vector2( 0.108527, 0.181818 ), 0.465267, 0.465267, 0, 0, Vector2( 0.337209, 0.301136 ), 0.190172, 0.190172, 0, 0, Vector2( 0.569767, 0.344318 ), 0.521212, 0.521212, 0, 0, Vector2( 0.957364, 1 ), 0.0, 0.0, 0, 0, Vector2( 1, 1 ), 0.0, 0.0, 1, 0 ]
+_data = [ Vector2( 0, 0 ), 0.0, 0.303653, 0, 1, Vector2( 0.651163, 0.197727 ), 0.586364, 0.586364, 0, 0, Vector2( 1, 1 ), 4.00106, 0.0, 0, 0 ]
 
-[sub_resource type="CapsuleMesh" id=6]
+[sub_resource type="CapsuleMesh" id=5]
 radius = 0.21
 mid_height = 0.9
 
-[sub_resource type="CapsuleShape" id=7]
+[sub_resource type="CapsuleShape" id=6]
 radius = 0.21
 height = 0.9
 
@@ -48,28 +49,29 @@ omni_range = 14.8174
 
 [node name="SimpleTerrain" type="Node" parent="."]
 script = ExtResource( 7 )
-enable_tool = true
 noise = SubResource( 2 )
 height_curve = SubResource( 3 )
-scale_y = 0.4
+scale_y = 0.5
 scale_xyz = 1000.0
-island_start_radius = 0.5
+resolution = 1000
+scale_period = 64.0
+island_start_radius = 0.8
 material = ExtResource( 2 )
 
 [node name="TerrainMesh" type="MeshInstance" parent="SimpleTerrain"]
 
 [node name="FirstPersonPlayer" type="KinematicBody" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -301.136, 42.3086, 326.387 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -132.24, 229.558, -38.5792 )
 script = ExtResource( 1 )
 
 [node name="MeshInstance" type="MeshInstance" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0 )
-mesh = SubResource( 6 )
+mesh = SubResource( 5 )
 material/0 = null
 
 [node name="CollisionShape" type="CollisionShape" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0 )
-shape = SubResource( 7 )
+shape = SubResource( 6 )
 
 [node name="Camera" type="Camera" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0 )
