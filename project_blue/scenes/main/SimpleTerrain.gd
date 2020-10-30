@@ -74,6 +74,7 @@ func update_arrays():
 	for y in range(0, resolution + 1):
 		for x in range(0, resolution + 1):
 			var raw_noise_val = (noise.get_noise_2d(x * cell_size * scale_period, y * cell_size * scale_period) + 1)/2
+			
 			var island_scale = 1
 			if island_mesh:
 				var radius = resolution / 2
