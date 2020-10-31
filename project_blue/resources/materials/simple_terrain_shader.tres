@@ -13,28 +13,98 @@ uniform float terrain_height_max = 1.0;
 
 //albedo settings
 uniform vec4 albedo_water : hint_color;
-uniform float water_height_max = -0.6;
-uniform float alb_water_blend = 0.5;
-
 uniform vec4 albedo_sand : hint_color;
-uniform float sand_height_max;
 uniform vec4 albedo_grass : hint_color;
-uniform float grass_height_max;
 uniform vec4 albedo_snow : hint_color;
-
-uniform float grass_sand_blend = 0.5;
-uniform float snow_grass_blend = 0.5;
-
 uniform vec4 albedo_rock : hint_color;
-uniform float rock_height_max;
 uniform vec4 albedo_stone : hint_color;
 
-uniform float stone_rock_blend = 0.5;
+uniform float water_height_max = 0.0;
+uniform float sand_height_max = 0.5;
+uniform float grass_height_max = 0.75;
+uniform float rock_height_max = 0.5;
+
+const float snow_height_max = 1.0;
+const float stone_height_max = 1.0;
+
+uniform float alb_water_blend = 0;
+
+uniform float grass_sand_blend = 0;
+uniform float snow_grass_blend = 0;
+uniform float stone_rock_blend = 0;
+uniform float hor_vert_blend_start = 0.5;
+uniform float hor_vert_blend_end = 0.5;
 
 //variables
 varying float height;
 varying float vertical_angle;
 varying float ang_scale;
+
+vec4 blend_albedo(float boundary, float low_height, vec4 low_albedo, vec4 high_albedo) {
+	float scale = (height - low_height)/(boundary - low_height);
+	return high_albedo * scale + low_albedo * (1.0 - scale);
+}
+
+float get_boundary(float blend, float low_height, float high_height) {
+	return low_height + (high_height - low_height) * blend;
+}
+
+vec4 get_hor_albedo() {
+	float sand_grass_boundary = get_boundary(grass_sand_blend, sand_height_max, grass_height_max);
+	float grass_snow_boundary = get_boundary(snow_grass_blend, grass_height_max, snow_height_max);
+	
+	vec4 hor_albedo;
+	if (height <= sand_height_max){
+		hor_albedo = albedo_sand;
+	}
+	else if (height <= sand_grass_boundary){
+		hor_albedo = blend_albedo(sand_grass_boundary, sand_height_max, albedo_sand, albedo_grass);
+	}
+	else if (height <= grass_height_max){
+		hor_albedo = albedo_grass;
+	}
+	else if (height <= grass_snow_boundary){
+		hor_albedo = blend_albedo(grass_snow_boundary, grass_height_max, albedo_grass, albedo_snow);
+	}
+	else{
+		hor_albedo = albedo_snow;
+	}
+	return hor_albedo;
+}
+
+vec4 get_vert_albedo() {
+	float rock_stone_boundary = get_boundary(stone_rock_blend, rock_height_max, stone_height_max);
+	
+	vec4 vert_albedo;
+	if (height <= rock_height_max){
+		vert_albedo = albedo_rock;
+	}
+	else if (height <= rock_stone_boundary){
+		vert_albedo = blend_albedo(rock_stone_boundary, rock_height_max, albedo_rock, albedo_stone);
+	}
+	else{
+		vert_albedo = albedo_stone;
+	}
+	return vert_albedo;
+}
+
+vec4 get_final_albedo() {
+	vec4 hor_albedo = get_hor_albedo();
+	vec4 vert_albedo = get_vert_albedo();
+	
+	vec4 alb;
+	if (ang_scale <= hor_vert_blend_start) {
+		alb = vert_albedo;
+	}
+	else if (ang_scale <= hor_vert_blend_end) {
+		float scale = (ang_scale - hor_vert_blend_start)/(hor_vert_blend_end - hor_vert_blend_start);
+		alb = hor_albedo * scale + vert_albedo * (1.0 - scale);
+	}
+	else {
+		alb = hor_albedo;
+	}
+	return alb;
+}
 
 void vertex() {
 	height = VERTEX.y/terrain_height_max;
@@ -47,48 +117,11 @@ void fragment() {
 		ALBEDO = albedo_water.xyz;
 	}
 	else{
-		float sand_grass_boundary = sand_height_max + (grass_height_max - sand_height_max) * grass_sand_blend;
-		float grass_snow_boundary = grass_height_max + (1.0 - grass_height_max) * snow_grass_blend;
-		float rock_stone_boundary = rock_height_max + (1.0 - rock_height_max) * stone_rock_blend;
-		
-		vec3 hor_albedo;
-		if (height <= sand_height_max){
-			hor_albedo = albedo_sand.xyz;
+		vec4 alb = get_final_albedo();
+		if (height <= water_height_max) {
+			alb = blend_albedo(water_alb_boundary, water_height_max, alb, albedo_water);
 		}
-		else if (height <= sand_grass_boundary){
-			float scale = (height - sand_height_max)/(sand_grass_boundary - sand_height_max);
-			hor_albedo = albedo_grass.xyz * scale + albedo_sand.xyz * (1.0 - scale);
-		}
-		else if (height <= grass_height_max){
-			hor_albedo = albedo_grass.xyz;
-		}
-		else if (height <= grass_snow_boundary){
-			float scale = (height - grass_height_max)/(grass_snow_boundary - grass_height_max);
-			hor_albedo = albedo_snow.xyz * scale + albedo_grass.xyz * (1.0 - scale);
-		}
-		else{
-			hor_albedo = albedo_snow.xyz;
-		}
-		
-		vec3 vert_albedo;
-		if (height <= rock_height_max){
-			vert_albedo = albedo_rock.xyz;
-		}
-		else if (height <= rock_stone_boundary){
-			float scale = (height - rock_height_max)/(rock_stone_boundary - rock_height_max);
-			vert_albedo = albedo_stone.xyz * scale + albedo_rock.xyz * (1.0 - scale);
-		}
-		else{
-			vert_albedo = albedo_stone.xyz;
-		}
-		
-		vec3 alb = ang_scale * hor_albedo + (1.0 - ang_scale) * vert_albedo;
-		if (height <= water_height_max){
-			float scale = (water_height_max - height)/(water_height_max - water_alb_boundary);
-			alb = albedo_water.xyz * scale + alb * (1.0 - scale);
-		}
-		
-		ALBEDO = alb;
+		ALBEDO = alb.xyz;
 	}
 
 	SPECULAR = specular;
@@ -104,16 +137,18 @@ shader_param/metallic = 0.0
 shader_param/roughness = 1.0
 shader_param/terrain_height_max = 500.0
 shader_param/albedo_water = Color( 0.0392157, 0.301961, 0.576471, 1 )
-shader_param/water_height_max = 0.099
-shader_param/alb_water_blend = 0.101
 shader_param/albedo_sand = Color( 0.709804, 0.705882, 0.329412, 1 )
-shader_param/sand_height_max = 0.112
 shader_param/albedo_grass = Color( 0.0235294, 0.380392, 0.0509804, 1 )
-shader_param/grass_height_max = 0.308
 shader_param/albedo_snow = Color( 1, 1, 1, 1 )
+shader_param/albedo_rock = Color( 0.427451, 0.239216, 0.00784314, 1 )
+shader_param/albedo_stone = Color( 0.309804, 0.309804, 0.309804, 1 )
+shader_param/water_height_max = 0.099
+shader_param/sand_height_max = 0.112
+shader_param/grass_height_max = 0.308
+shader_param/rock_height_max = 0.236
+shader_param/alb_water_blend = 0.101
 shader_param/grass_sand_blend = 0.06
 shader_param/snow_grass_blend = 0.169
-shader_param/albedo_rock = Color( 0.360784, 0.203922, 0, 1 )
-shader_param/rock_height_max = 0.236
-shader_param/albedo_stone = Color( 0.309804, 0.309804, 0.309804, 1 )
 shader_param/stone_rock_blend = 0.067
+shader_param/hor_vert_blend_start = 0.182
+shader_param/hor_vert_blend_end = 1.0

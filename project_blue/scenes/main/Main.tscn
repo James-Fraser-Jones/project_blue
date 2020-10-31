@@ -23,11 +23,11 @@ lacunarity = 1.98
 [sub_resource type="Curve" id=3]
 _data = [ Vector2( 0, 0 ), 0.0, 0.303653, 0, 1, Vector2( 0.651163, 0.197727 ), 0.586364, 0.586364, 0, 0, Vector2( 1, 1 ), 4.00106, 0.0, 0, 0 ]
 
-[sub_resource type="CapsuleMesh" id=4]
+[sub_resource type="CapsuleMesh" id=5]
 radius = 0.21
 mid_height = 0.9
 
-[sub_resource type="CapsuleShape" id=5]
+[sub_resource type="CapsuleShape" id=6]
 radius = 0.21
 height = 0.9
 
@@ -64,12 +64,12 @@ script = ExtResource( 1 )
 
 [node name="MeshInstance" type="MeshInstance" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0 )
-mesh = SubResource( 4 )
+mesh = SubResource( 5 )
 material/0 = null
 
 [node name="CollisionShape" type="CollisionShape" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 0, 0 )
-shape = SubResource( 5 )
+shape = SubResource( 6 )
 
 [node name="Camera" type="Camera" parent="FirstPersonPlayer"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0 )

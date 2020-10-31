@@ -2,12 +2,17 @@ tool
 extends Node
 
 #Things I want to do:
-#Try adding exponent curve rather than manual height curve:
-#Make more "plains" ground
-#Add settings for controlling vertical vs horizontal albedo blending
-#Add water surface
-#Add textures back in somehow (texture bombing?)
-#Add LOD system?
+
+#Cull geomtery beneath a given height
+#Add reflective and transparent water surface with geometry and special shaders
+#Add textures back in using "distance texturing" and "macro variation"
+
+#Add quadtree performance
+#Add LOD system (with fading between layers)
+#Add dynamic physics updating
+#Impove noise generation to create more interesting terrain
+#Use dual contouring instead >:D
+
 #Add endless system?
 
 export var enable_tool: bool = false
