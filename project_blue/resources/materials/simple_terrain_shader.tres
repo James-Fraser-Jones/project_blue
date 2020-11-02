@@ -1,4 +1,4 @@
-[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+[gd_resource type="ShaderMaterial" load_steps=4 format=2]
 
 [sub_resource type="Shader" id=1]
 code = "shader_type spatial;
@@ -9,7 +9,13 @@ uniform float specular : hint_range(0, 1) = 0.5;
 uniform float metallic : hint_range(0, 1) = 0.0;
 uniform float roughness : hint_range(0, 1) = 1.0;
 
-uniform float terrain_height_max = 1.0;
+uniform float terrain_scale_y = 1;
+uniform float terrain_scale_xyz = 1;
+
+uniform sampler2D noise;
+uniform float noise_scale = 0.15;
+uniform float noise_repeat = 1.0;
+const float noise_size = 512.0;
 
 //albedo settings
 uniform vec4 albedo_water : hint_color;
@@ -22,13 +28,11 @@ uniform vec4 albedo_stone : hint_color;
 uniform float water_height_max = 0.0;
 uniform float sand_height_max = 0.5;
 uniform float grass_height_max = 0.75;
-uniform float rock_height_max = 0.5;
-
 const float snow_height_max = 1.0;
+uniform float rock_height_max = 0.5;
 const float stone_height_max = 1.0;
 
 uniform float alb_water_blend = 0;
-
 uniform float grass_sand_blend = 0;
 uniform float snow_grass_blend = 0;
 uniform float stone_rock_blend = 0;
@@ -36,6 +40,7 @@ uniform float hor_vert_blend_start = 0.5;
 uniform float hor_vert_blend_end = 0.5;
 
 //variables
+varying float water_height;
 varying float height;
 varying float vertical_angle;
 varying float ang_scale;
@@ -107,19 +112,21 @@ vec4 get_final_albedo() {
 }
 
 void vertex() {
-	height = VERTEX.y/terrain_height_max;
+	water_height = VERTEX.y / (terrain_scale_y * terrain_scale_xyz);
+	height = water_height + (texture(noise, (VERTEX.xz/noise_repeat)*noise_size).x - 0.5) * noise_scale;
 	ang_scale = dot(NORMAL, vec3(0,1.0,0));
 }
 
 void fragment() {
 	float water_alb_boundary = water_height_max - water_height_max * alb_water_blend;
-	if (height <= water_alb_boundary){
+	if (water_height <= water_alb_boundary){
 		ALBEDO = albedo_water.xyz;
 	}
 	else{
 		vec4 alb = get_final_albedo();
-		if (height <= water_height_max) {
-			alb = blend_albedo(water_alb_boundary, water_height_max, alb, albedo_water);
+		if (water_height <= water_height_max) {
+			float scale = (water_height - water_height_max)/(water_alb_boundary - water_height_max);
+			alb = albedo_water * scale + alb * (1.0 - scale);
 		}
 		ALBEDO = alb.xyz;
 	}
@@ -130,25 +137,36 @@ void fragment() {
 }
 "
 
+[sub_resource type="OpenSimplexNoise" id=2]
+period = 43.1
+
+[sub_resource type="NoiseTexture" id=3]
+seamless = true
+noise = SubResource( 2 )
+
 [resource]
 shader = SubResource( 1 )
 shader_param/specular = 0.5
 shader_param/metallic = 0.0
 shader_param/roughness = 1.0
-shader_param/terrain_height_max = 500.0
+shader_param/terrain_scale_y = 0.5
+shader_param/terrain_scale_xyz = 1000.0
+shader_param/noise_scale = 0.15
+shader_param/noise_repeat = 1018.0
 shader_param/albedo_water = Color( 0.0392157, 0.301961, 0.576471, 1 )
 shader_param/albedo_sand = Color( 0.709804, 0.705882, 0.329412, 1 )
 shader_param/albedo_grass = Color( 0.0235294, 0.380392, 0.0509804, 1 )
 shader_param/albedo_snow = Color( 1, 1, 1, 1 )
 shader_param/albedo_rock = Color( 0.427451, 0.239216, 0.00784314, 1 )
 shader_param/albedo_stone = Color( 0.309804, 0.309804, 0.309804, 1 )
-shader_param/water_height_max = 0.099
+shader_param/water_height_max = 0.086
 shader_param/sand_height_max = 0.112
-shader_param/grass_height_max = 0.308
+shader_param/grass_height_max = 0.374
 shader_param/rock_height_max = 0.236
-shader_param/alb_water_blend = 0.101
+shader_param/alb_water_blend = 0.096
 shader_param/grass_sand_blend = 0.06
 shader_param/snow_grass_blend = 0.169
 shader_param/stone_rock_blend = 0.067
 shader_param/hor_vert_blend_start = 0.182
 shader_param/hor_vert_blend_end = 1.0
+shader_param/noise = SubResource( 3 )
