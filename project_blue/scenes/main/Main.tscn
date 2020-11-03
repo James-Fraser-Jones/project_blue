@@ -34,13 +34,12 @@ height = 0.9
 [sub_resource type="SphereMesh" id=6]
 
 [sub_resource type="SpatialMaterial" id=7]
-albedo_color = Color( 1, 0, 0, 1 )
 
 [node name="Main" type="Spatial"]
 script = ExtResource( 5 )
 
 [node name="DirectionalLight" type="DirectionalLight" parent="."]
-transform = Transform( -1, -0.000665072, 0.000496712, 0, 0.598386, 0.801208, -0.000830086, 0.801208, -0.598386, 0.338119, 545.363, -407.307 )
+transform = Transform( 1, 0, 0, 0, 0.598381, 0.801212, 0, -0.801212, 0.598381, 0.338119, 545.363, -407.307 )
 light_energy = 2.2
 
 [node name="ShaderExample" type="MeshInstance" parent="."]

@@ -1,4 +1,9 @@
-[gd_resource type="ShaderMaterial" load_steps=4 format=2]
+[gd_resource type="ShaderMaterial" load_steps=8 format=2]
+
+[ext_resource path="res://assets/textures/Moss002_2K-PNG/Moss002_2K_Color.png" type="Texture" id=1]
+[ext_resource path="res://assets/textures/Ground015_2K-PNG/Ground015_2K_Color.png" type="Texture" id=2]
+[ext_resource path="res://assets/textures/Ground033_2K-PNG/Ground033_2K_Color.png" type="Texture" id=3]
+[ext_resource path="res://assets/textures/Rock028_2K-PNG/Rock028_2K_Color.png" type="Texture" id=4]
 
 [sub_resource type="Shader" id=1]
 code = "shader_type spatial;
@@ -8,13 +13,13 @@ render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlic
 uniform float specular : hint_range(0, 1) = 0.5;
 uniform float metallic : hint_range(0, 1) = 0.0;
 uniform float roughness : hint_range(0, 1) = 1.0;
+uniform float blend_sharpness = 1.0;
 
 uniform float terrain_scale_y = 1;
 uniform float terrain_scale_xyz = 1;
 
-uniform sampler2D noise;
-uniform float noise_scale = 0.15;
-uniform float noise_repeat = 1.0;
+uniform float noise_amp = 0.05;
+uniform float noise_zoom = 1.0;
 const float noise_size = 512.0;
 
 //albedo settings
@@ -39,14 +44,34 @@ uniform float stone_rock_blend = 0;
 uniform float hor_vert_blend_start = 0.5;
 uniform float hor_vert_blend_end = 0.5;
 
+uniform sampler2D noise;
+
+uniform sampler2D sand;
+uniform float sand_zoom = 1.0;
+
+uniform sampler2D moss;
+uniform float moss_zoom = 1.0;
+
+uniform sampler2D snow;
+uniform float snow_zoom = 1.0;
+
+uniform sampler2D ground;
+uniform float ground_zoom = 1.0;
+
+uniform sampler2D stone;
+uniform float stone_zoom = 1.0;
+
 //variables
-varying float water_height;
 varying float height;
-varying float vertical_angle;
+varying float noisy_height;
+varying vec2 pan;
 varying float ang_scale;
 
+varying vec3 power_normal;
+varying vec3 triplanar_pos;
+
 vec4 blend_albedo(float boundary, float low_height, vec4 low_albedo, vec4 high_albedo) {
-	float scale = (height - low_height)/(boundary - low_height);
+	float scale = (noisy_height - low_height)/(boundary - low_height);
 	return high_albedo * scale + low_albedo * (1.0 - scale);
 }
 
@@ -54,22 +79,33 @@ float get_boundary(float blend, float low_height, float high_height) {
 	return low_height + (high_height - low_height) * blend;
 }
 
+vec4 triplanar_texture(sampler2D p_sampler,vec3 p_weights,vec3 p_triplanar_pos) {
+	vec4 samp=vec4(0.0);
+	samp+= texture(p_sampler,p_triplanar_pos.xy) * p_weights.z;
+	samp+= texture(p_sampler,p_triplanar_pos.xz) * p_weights.y;
+	samp+= texture(p_sampler,p_triplanar_pos.zy * vec2(-1.0,1.0)) * p_weights.x;
+	return samp;
+}
+
 vec4 get_hor_albedo() {
 	float sand_grass_boundary = get_boundary(grass_sand_blend, sand_height_max, grass_height_max);
 	float grass_snow_boundary = get_boundary(snow_grass_blend, grass_height_max, snow_height_max);
 	
+	vec4 grass_t = albedo_grass * texture(moss, pan*moss_zoom);
+	vec4 sand_t = albedo_sand * texture(sand, pan*sand_zoom);
+	
 	vec4 hor_albedo;
-	if (height <= sand_height_max){
-		hor_albedo = albedo_sand;
+	if (noisy_height <= sand_height_max){
+		hor_albedo = sand_t;
 	}
-	else if (height <= sand_grass_boundary){
-		hor_albedo = blend_albedo(sand_grass_boundary, sand_height_max, albedo_sand, albedo_grass);
+	else if (noisy_height <= sand_grass_boundary){
+		hor_albedo = blend_albedo(sand_grass_boundary, sand_height_max, sand_t, grass_t);
 	}
-	else if (height <= grass_height_max){
-		hor_albedo = albedo_grass;
+	else if (noisy_height <= grass_height_max){
+		hor_albedo = grass_t;
 	}
-	else if (height <= grass_snow_boundary){
-		hor_albedo = blend_albedo(grass_snow_boundary, grass_height_max, albedo_grass, albedo_snow);
+	else if (noisy_height <= grass_snow_boundary){
+		hor_albedo = blend_albedo(grass_snow_boundary, grass_height_max, grass_t, albedo_snow);
 	}
 	else{
 		hor_albedo = albedo_snow;
@@ -80,15 +116,18 @@ vec4 get_hor_albedo() {
 vec4 get_vert_albedo() {
 	float rock_stone_boundary = get_boundary(stone_rock_blend, rock_height_max, stone_height_max);
 	
+	vec4 ground_t = albedo_rock * triplanar_texture(ground, power_normal, triplanar_pos/ground_zoom);
+	vec4 stone_t = albedo_stone * triplanar_texture(stone, power_normal, triplanar_pos/stone_zoom);
+	
 	vec4 vert_albedo;
-	if (height <= rock_height_max){
-		vert_albedo = albedo_rock;
+	if (noisy_height <= rock_height_max){
+		vert_albedo = ground_t;
 	}
-	else if (height <= rock_stone_boundary){
-		vert_albedo = blend_albedo(rock_stone_boundary, rock_height_max, albedo_rock, albedo_stone);
+	else if (noisy_height <= rock_stone_boundary){
+		vert_albedo = blend_albedo(rock_stone_boundary, rock_height_max, ground_t, stone_t);
 	}
 	else{
-		vert_albedo = albedo_stone;
+		vert_albedo = stone_t;
 	}
 	return vert_albedo;
 }
@@ -112,24 +151,33 @@ vec4 get_final_albedo() {
 }
 
 void vertex() {
-	water_height = VERTEX.y / (terrain_scale_y * terrain_scale_xyz);
-	height = water_height + (texture(noise, (VERTEX.xz/noise_repeat)*noise_size).x - 0.5) * noise_scale;
+	height = VERTEX.y / (terrain_scale_y * terrain_scale_xyz);
+	pan = VERTEX.xz / terrain_scale_xyz;
+	noisy_height = height + (texture(noise, (VERTEX.xz/noise_zoom)*noise_size).x - 0.5) * noise_amp;
 	ang_scale = dot(NORMAL, vec3(0,1.0,0));
+	
+	power_normal = pow(abs(NORMAL), vec3(blend_sharpness));
+	power_normal /= dot(power_normal, vec3(1.0));
+	triplanar_pos = VERTEX;
+	triplanar_pos *= vec3(1.0, -1.0, 1.0);
 }
 
 void fragment() {
+	vec4 alb;
+	
 	float water_alb_boundary = water_height_max - water_height_max * alb_water_blend;
-	if (water_height <= water_alb_boundary){
-		ALBEDO = albedo_water.xyz;
+	if (height <= water_alb_boundary){
+		alb = albedo_water;
 	}
 	else{
-		vec4 alb = get_final_albedo();
-		if (water_height <= water_height_max) {
-			float scale = (water_height - water_height_max)/(water_alb_boundary - water_height_max);
+		alb = get_final_albedo();
+		if (height <= water_height_max) {
+			float scale = (height - water_height_max)/(water_alb_boundary - water_height_max);
 			alb = albedo_water * scale + alb * (1.0 - scale);
 		}
-		ALBEDO = alb.xyz;
+		
 	}
+	ALBEDO = alb.xyz;
 
 	SPECULAR = specular;
 	METALLIC = metallic;
@@ -149,24 +197,34 @@ shader = SubResource( 1 )
 shader_param/specular = 0.5
 shader_param/metallic = 0.0
 shader_param/roughness = 1.0
+shader_param/blend_sharpness = 4.0
 shader_param/terrain_scale_y = 0.5
 shader_param/terrain_scale_xyz = 1000.0
-shader_param/noise_scale = 0.15
-shader_param/noise_repeat = 1018.0
+shader_param/noise_amp = 0.05
+shader_param/noise_zoom = 1020.0
 shader_param/albedo_water = Color( 0.0392157, 0.301961, 0.576471, 1 )
-shader_param/albedo_sand = Color( 0.709804, 0.705882, 0.329412, 1 )
-shader_param/albedo_grass = Color( 0.0235294, 0.380392, 0.0509804, 1 )
+shader_param/albedo_sand = Color( 0.662745, 0.658824, 0.419608, 1 )
+shader_param/albedo_grass = Color( 0.227451, 0.45098, 0.235294, 1 )
 shader_param/albedo_snow = Color( 1, 1, 1, 1 )
 shader_param/albedo_rock = Color( 0.427451, 0.239216, 0.00784314, 1 )
 shader_param/albedo_stone = Color( 0.309804, 0.309804, 0.309804, 1 )
 shader_param/water_height_max = 0.086
 shader_param/sand_height_max = 0.112
-shader_param/grass_height_max = 0.374
-shader_param/rock_height_max = 0.236
+shader_param/grass_height_max = 0.303
+shader_param/rock_height_max = 0.262
 shader_param/alb_water_blend = 0.096
-shader_param/grass_sand_blend = 0.06
+shader_param/grass_sand_blend = 0.112
 shader_param/snow_grass_blend = 0.169
 shader_param/stone_rock_blend = 0.067
-shader_param/hor_vert_blend_start = 0.182
+shader_param/hor_vert_blend_start = 0.243
 shader_param/hor_vert_blend_end = 1.0
+shader_param/sand_zoom = 20.0
+shader_param/moss_zoom = 20.0
+shader_param/snow_zoom = 1.0
+shader_param/ground_zoom = 20.0
+shader_param/stone_zoom = 20.0
 shader_param/noise = SubResource( 3 )
+shader_param/sand = ExtResource( 3 )
+shader_param/moss = ExtResource( 1 )
+shader_param/ground = ExtResource( 2 )
+shader_param/stone = ExtResource( 4 )
