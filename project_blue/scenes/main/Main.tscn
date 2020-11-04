@@ -64,7 +64,8 @@ material = ExtResource( 2 )
 [node name="TerrainMesh" type="MeshInstance" parent="SimpleTerrain"]
 
 [node name="FirstPersonPlayer" type="KinematicBody" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -132.24, 229.558, -38.5792 )
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -200 )
+visible = false
 script = ExtResource( 1 )
 
 [node name="MeshInstance" type="MeshInstance" parent="FirstPersonPlayer"]
@@ -98,5 +99,3 @@ noise = SubResource( 6 )
 color_scale = 3.0
 color_leaves_only = true
 color_leaf = Color( 0.0313726, 1, 0, 1 )
-
-[node name="OcMesh" type="MeshInstance" parent="Octree"]
