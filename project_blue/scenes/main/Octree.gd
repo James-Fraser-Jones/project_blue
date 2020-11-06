@@ -5,7 +5,7 @@ export var enable_tool: bool = false
 
 #mesh generation settings
 export(float, EXP, 0.1, 10000.0) var size = 1
-export(int, 1, 7) var max_depth = 1
+export(int, 0, 6) var max_depth = 0
 export var noise: OpenSimplexNoise
 export var color_scale: float = 1
 export var color_leaves_only: bool = false
@@ -68,7 +68,7 @@ func build_mesh(arr_mesh: ArrayMesh, size: float, origin: Vector3, max_depth: in
 	for i in range(0, vertices.size()):
 		var val = clamp((noise.get_noise_3dv(vertices[i])*color_scale + 1)/2, 0, 1)
 		if color_leaves_only:
-			colors[i] = Color.from_hsv(color_leaf.h,1,1 if max_depth == 1 else 0)
+			colors[i] = Color.from_hsv(color_leaf.h,1,1 if max_depth == 0 else 0)
 		else:
 			colors[i] = Color.from_hsv(val,1,1)
 	
@@ -88,7 +88,7 @@ func build_mesh(arr_mesh: ArrayMesh, size: float, origin: Vector3, max_depth: in
 	arr_mesh.surface_set_material(arr_mesh.get_surface_count()-1, material)
 	
 	#recurse (or don't)
-	if max_depth > 1:
+	if max_depth > 0:
 		for z in range(-1, 2, 2):
 			for y in range(-1, 2, 2):
 				for x in range(-1, 2, 2):

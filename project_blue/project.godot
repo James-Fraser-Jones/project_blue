@@ -62,4 +62,4 @@ jump={
 
 [rendering]
 
-environment/default_environment="res://resources/default_env.tres"
+environment/default_environment="res://resources/environments/default_env.tres"

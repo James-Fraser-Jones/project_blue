@@ -1,4 +1,5 @@
 pub mod transvoxel;
+pub mod dual;
 
 use gdnative::prelude::*;
 use gdnative::api::{Mesh, ArrayMesh};
@@ -67,6 +68,9 @@ impl ProcGen {
 
         array_mesh
     }
+
+    //#[export]
+    //fn terrain() ...
 }
 
 fn init(handle: InitHandle) {
